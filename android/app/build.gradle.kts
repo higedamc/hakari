@@ -5,10 +5,19 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Cargokit: builds the Rust core (rust/) and bundles librust.so per ABI.
+apply(from = "../../cargokit/gradle/plugin.gradle")
+
+extensions.configure<Any>("cargokit") {
+    this.javaClass.getMethod("setManifestDir", String::class.java).invoke(this, "../../rust")
+    this.javaClass.getMethod("setLibname", String::class.java).invoke(this, "rust")
+}
+
 android {
     namespace = "org.lekt.hakari"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pinned to match rust/.cargo/config.toml Android linker paths.
+    ndkVersion = "28.0.13004108"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
