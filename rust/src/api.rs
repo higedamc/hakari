@@ -42,6 +42,9 @@ struct HakariClient {
     client: Client,
     /// `None` in `PublicKeyOnly` (Amber) mode — Rust never sees the secret.
     keys: Option<Keys>,
+    /// Identity this client was initialized for; publish paths must not
+    /// accept events signed by anyone else.
+    public_key: PublicKey,
     /// Send timeout (longer when routing through Orbot).
     send_timeout: Duration,
 }
@@ -259,15 +262,12 @@ pub fn init_client(mode: ClientMode, relays: Vec<String>, tor: TorModeFfi) -> Re
                     .as_deref()
                     .ok_or_else(|| anyhow!("proxy_url is required in Orbot mode"))?;
                 let addr = parse_proxy_url(proxy_url)?;
-                // Fallback for any transport that honors proxy env vars
-                // (same belt-and-suspenders approach as meiso).
-                std::env::set_var("all_proxy", proxy_url);
-                std::env::set_var("ALL_PROXY", proxy_url);
-                std::env::set_var("socks_proxy", proxy_url);
-                std::env::set_var("SOCKS_PROXY", proxy_url);
-                let connection = Connection::new()
-                    .proxy(addr)
-                    .target(ConnectionTarget::All);
+                // Note: no env-var fallback (unlike meiso). set_var is
+                // thread-unsafe once the Tokio runtime is up, and stale
+                // *_proxy vars would keep routing traffic after the user
+                // disables Tor. The explicit Connection proxy below covers
+                // the only network stack in this crate.
+                let connection = Connection::new().proxy(addr).target(ConnectionTarget::All);
                 Options::new().connection(connection)
             }
         };
@@ -297,6 +297,7 @@ pub fn init_client(mode: ClientMode, relays: Vec<String>, tor: TorModeFfi) -> Re
         *guard = Some(HakariClient {
             client,
             keys,
+            public_key,
             send_timeout,
         });
 
@@ -539,12 +540,26 @@ pub fn publish_signed_event(event_json: String) -> Result<SendResultFfi> {
         event
             .verify()
             .map_err(|e| anyhow!("Event signature verification failed: {e}"))?;
+        // A valid signature is not enough: only publish our own health
+        // events, so a compromised signer app cannot use Hakari as a
+        // relay-publishing proxy for arbitrary identities or kinds.
+        let kind = event.kind.as_u16();
+        if kind != KIND_WEIGHT && kind != KIND_BACKUP {
+            return Err(anyhow!(
+                "Refusing to publish event of unexpected kind {kind}"
+            ));
+        }
         let event_id = event.id.to_hex();
 
         let guard = NOSTR_CLIENT.lock().await;
         let hc = guard
             .as_ref()
             .ok_or_else(|| anyhow!("Nostr client not initialized"))?;
+        if event.pubkey != hc.public_key {
+            return Err(anyhow!(
+                "Refusing to publish event signed by a different identity"
+            ));
+        }
         let (ok, failed) = send_event_counting(&hc.client, hc.send_timeout, event).await?;
         Ok(SendResultFfi {
             event_id,
@@ -569,11 +584,19 @@ pub fn fetch_health_events(
         let pk = PublicKey::parse(&pubkey_hex)
             .map_err(|e| anyhow!("Invalid public key '{pubkey_hex}': {e}"))?;
 
-        let mut weight_filter = Filter::new().author(pk).kind(Kind::Custom(KIND_WEIGHT));
+        // Cap results: a hostile relay can replay unbounded copies of our
+        // own (validly signed) events; without a limit that means memory
+        // growth here and one signer decrypt round-trip per event upstream.
+        const FETCH_LIMIT: usize = 1000;
+        let mut weight_filter = Filter::new()
+            .author(pk)
+            .kind(Kind::Custom(KIND_WEIGHT))
+            .limit(FETCH_LIMIT);
         let mut backup_filter = Filter::new()
             .author(pk)
             .kind(Kind::Custom(KIND_BACKUP))
-            .hashtag(BACKUP_HASHTAG);
+            .hashtag(BACKUP_HASHTAG)
+            .limit(FETCH_LIMIT);
         if let Some(since) = since_unix {
             let ts = Timestamp::from(since.max(0) as u64);
             weight_filter = weight_filter.since(ts);
@@ -737,13 +760,8 @@ mod tests {
     fn unsigned_weight_event_plain() {
         let keys = Keys::generate();
         let entry = sample_entry();
-        let json = build_unsigned_weight_event(
-            entry,
-            keys.public_key().to_hex(),
-            None,
-            false,
-        )
-        .unwrap();
+        let json =
+            build_unsigned_weight_event(entry, keys.public_key().to_hex(), None, false).unwrap();
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         assert_eq!(value["kind"], 1351);
@@ -752,8 +770,7 @@ mod tests {
         assert_eq!(value["pubkey"], keys.public_key().to_hex());
         assert!(value["id"].is_string(), "unsigned event must carry its id");
 
-        let tags: Vec<Vec<String>> =
-            serde_json::from_value(value["tags"].clone()).unwrap();
+        let tags: Vec<Vec<String>> = serde_json::from_value(value["tags"].clone()).unwrap();
         assert_eq!(tag_value(&tags, "unit"), Some("kg"));
         assert_eq!(tag_value(&tags, "source"), Some("hakari"));
         assert_eq!(tag_value(&tags, "entry_method"), Some("automated_device"));
@@ -780,11 +797,13 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         assert_eq!(value["content"], "ciphertext-from-amber");
-        let tags: Vec<Vec<String>> =
-            serde_json::from_value(value["tags"].clone()).unwrap();
+        let tags: Vec<Vec<String>> = serde_json::from_value(value["tags"].clone()).unwrap();
         assert_eq!(tag_value(&tags, "encryption_algo"), Some("nip44"));
         assert_eq!(tag_value(&tags, "encrypted"), Some("true"));
-        assert_eq!(tag_value(&tags, "p"), Some(keys.public_key().to_hex().as_str()));
+        assert_eq!(
+            tag_value(&tags, "p"),
+            Some(keys.public_key().to_hex().as_str())
+        );
         assert_eq!(tag_value(&tags, "entry_method"), Some("manual"));
         assert_eq!(tag_value(&tags, "accuracy"), None);
     }
@@ -803,8 +822,7 @@ mod tests {
 
         assert_eq!(value["kind"], 30078);
         assert_eq!(value["content"], "encrypted-backup-content");
-        let tags: Vec<Vec<String>> =
-            serde_json::from_value(value["tags"].clone()).unwrap();
+        let tags: Vec<Vec<String>> = serde_json::from_value(value["tags"].clone()).unwrap();
         assert_eq!(tag_value(&tags, "d"), Some("hakari:entry:entry-123"));
         assert_eq!(hashtags(&tags), vec!["hakari-health"]);
     }
@@ -843,12 +861,8 @@ mod tests {
         let nsec = keys.secret_key().to_bech32().unwrap();
         let pubkey_hex = keys.public_key().to_hex();
 
-        let ciphertext = nip44_encrypt_local(
-            nsec.clone(),
-            pubkey_hex.clone(),
-            "72.5".to_string(),
-        )
-        .unwrap();
+        let ciphertext =
+            nip44_encrypt_local(nsec.clone(), pubkey_hex.clone(), "72.5".to_string()).unwrap();
         assert_ne!(ciphertext, "72.5");
         let plain = nip44_decrypt_local(nsec, pubkey_hex, ciphertext).unwrap();
         assert_eq!(plain, "72.5");
@@ -858,13 +872,9 @@ mod tests {
     fn sign_event_local_produces_valid_event() {
         let keys = Keys::generate();
         let nsec = keys.secret_key().to_bech32().unwrap();
-        let unsigned = build_unsigned_weight_event(
-            sample_entry(),
-            keys.public_key().to_hex(),
-            None,
-            false,
-        )
-        .unwrap();
+        let unsigned =
+            build_unsigned_weight_event(sample_entry(), keys.public_key().to_hex(), None, false)
+                .unwrap();
         let signed = sign_event_local(nsec, unsigned).unwrap();
         let event = Event::from_json(&signed).unwrap();
         event.verify().unwrap();

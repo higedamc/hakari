@@ -25,8 +25,8 @@ class RustNostrService implements NostrService {
   RustNostrService({
     required SignerService signer,
     required NsecStore nsecStore,
-  })  : _signer = signer,
-        _nsecStore = nsecStore;
+  }) : _signer = signer,
+       _nsecStore = nsecStore;
 
   /// Load the native library. Call once from main() before any other
   /// method of this class (and before LocalKeySignerService is used).
@@ -112,11 +112,7 @@ class RustNostrService implements NostrService {
         : const bridge.TorModeFfi(kind: bridge.TorModeKind.disabled);
 
     try {
-      await bridge.initClient(
-        mode: mode,
-        relays: settings.relays,
-        tor: tor,
-      );
+      await bridge.initClient(mode: mode, relays: settings.relays, tor: tor);
       _clientReady = true;
     } catch (e) {
       throw _mapError(e, connecting: true);
@@ -171,8 +167,10 @@ class RustNostrService implements NostrService {
 
     String? contentOverride;
     if (encrypt) {
-      contentOverride =
-          await _signer.nip44Encrypt(weightContent(entry.weightKg), ownPubkey);
+      contentOverride = await _signer.nip44Encrypt(
+        weightContent(entry.weightKg),
+        ownPubkey,
+      );
     }
     final ffiEntry = _toFfi(entry);
     final String signed1351;
@@ -246,8 +244,13 @@ class RustNostrService implements NostrService {
     final entries = <WeightEntry>[];
     // 1351 ids already covered by a full-entry backup (deduped below).
     final referencedWeightEventIds = <String>{};
+    // A hostile relay can replay the same (validly signed) event many
+    // times; each decrypt is a signer round-trip (a full Amber prompt in
+    // intent mode), so drop duplicates by event id before decrypting.
+    final seenEventIds = <String>{};
 
     for (final event in events.where((e) => e.kind == backupEventKind)) {
+      if (!seenEventIds.add(event.id)) continue;
       try {
         final plain = await _signer.nip44Decrypt(event.content, ownPubkey);
         final map = jsonDecode(plain) as Map<String, dynamic>;
@@ -263,6 +266,7 @@ class RustNostrService implements NostrService {
     }
 
     for (final event in events.where((e) => e.kind == weightEventKind)) {
+      if (!seenEventIds.add(event.id)) continue;
       if (referencedWeightEventIds.contains(event.id)) continue;
       try {
         var content = event.content;
@@ -310,24 +314,24 @@ class RustNostrService implements NostrService {
   }
 
   bridge.FfiWeightEntry _toFfi(WeightEntry entry) => bridge.FfiWeightEntry(
-        id: entry.id,
-        recordedAtUnix: entry.recordedAt.millisecondsSinceEpoch ~/ 1000,
-        weightKg: entry.weightKg,
-        bodyFatPercent: entry.bodyFatPercent,
-        bodyWaterPercent: entry.bodyWaterPercent,
-        muscleMassKg: entry.muscleMassKg,
-        visceralFatRating: entry.visceralFatRating,
-        boneMassKg: entry.boneMassKg,
-        basalMetabolicRateKcal: entry.basalMetabolicRateKcal,
-        metabolicAge: entry.metabolicAge,
-        source: entry.source.name,
-      );
+    id: entry.id,
+    recordedAtUnix: entry.recordedAt.millisecondsSinceEpoch ~/ 1000,
+    weightKg: entry.weightKg,
+    bodyFatPercent: entry.bodyFatPercent,
+    bodyWaterPercent: entry.bodyWaterPercent,
+    muscleMassKg: entry.muscleMassKg,
+    visceralFatRating: entry.visceralFatRating,
+    boneMassKg: entry.boneMassKg,
+    basalMetabolicRateKcal: entry.basalMetabolicRateKcal,
+    metabolicAge: entry.metabolicAge,
+    source: entry.source.name,
+  );
 
   RelayState _mapRelayState(String state) => switch (state) {
-        'connected' => RelayState.connected,
-        'connecting' || 'pending' || 'initialized' => RelayState.connecting,
-        _ => RelayState.disconnected,
-      };
+    'connected' => RelayState.connected,
+    'connecting' || 'pending' || 'initialized' => RelayState.connecting,
+    _ => RelayState.disconnected,
+  };
 
   NostrFailure _mapError(Object e, {bool connecting = false}) {
     if (e is NostrFailure) return e;

@@ -119,13 +119,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onPressed: () {
                   final text = controller.text.trim();
                   final uri = Uri.tryParse(text);
-                  final valid = (text.startsWith('wss://') ||
-                          text.startsWith('ws://')) &&
+                  // Plaintext ws:// would hand health events to any
+                  // on-path attacker, so it is only accepted where TLS
+                  // is unavailable but the transport is safe anyway:
+                  // loopback (local relay) and .onion (Tor encrypts).
+                  final host = uri?.host ?? '';
+                  final cleartextOk =
+                      host == '127.0.0.1' ||
+                      host == 'localhost' ||
+                      host.endsWith('.onion');
+                  final valid =
                       uri != null &&
-                      uri.host.isNotEmpty;
+                      host.isNotEmpty &&
+                      (text.startsWith('wss://') ||
+                          (text.startsWith('ws://') && cleartextOk));
                   if (!valid) {
                     setDialogState(() {
-                      errorText = 'Enter a wss:// or ws:// URL';
+                      errorText =
+                          'Use wss:// (ws:// only for localhost or .onion)';
                     });
                     return;
                   }
@@ -191,7 +202,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         imported == 0
             ? 'No new entries to import.'
             : 'Imported $imported ${imported == 1 ? 'entry' : 'entries'} '
-                'from Health.',
+                  'from Health.',
       );
     } on Failure catch (f) {
       showAppSnackBar(f.message);
@@ -267,13 +278,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ListTile(
           leading: const Icon(Icons.key_outlined),
           title: Text(_truncateMiddle(pubkey)),
-          subtitle: Text(
-            switch (settings.signerMode) {
-              SignerMode.amber => 'Signing with Amber',
-              SignerMode.localKey => 'Signing with local key',
-              SignerMode.none => 'No signer configured',
-            },
-          ),
+          subtitle: Text(switch (settings.signerMode) {
+            SignerMode.amber => 'Signing with Amber',
+            SignerMode.localKey => 'Signing with local key',
+            SignerMode.none => 'No signer configured',
+          }),
           trailing: TextButton(
             onPressed: _logout,
             child: const Text('Log out'),
@@ -333,9 +342,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       const SectionHeader('Privacy'),
       SwitchListTile(
         title: const Text('Route through Orbot (SOCKS5)'),
-        subtitle: const Text(
-          'Requires Orbot running with SOCKS on port 9050',
-        ),
+        subtitle: const Text('Requires Orbot running with SOCKS on port 9050'),
         value: orbotEnabled,
         onChanged: (enabled) => _updateAndApply(
           (c) => c.setTorMode(enabled ? TorMode.orbot : TorMode.disabled),
@@ -349,7 +356,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             keyboardType: TextInputType.url,
             decoration: const InputDecoration(
               labelText: 'SOCKS5 proxy URL',
-              helperText: 'Press done to apply '
+              helperText:
+                  'Press done to apply '
                   '(default socks5://127.0.0.1:9050)',
             ),
             onFieldSubmitted: (value) =>
@@ -377,9 +385,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       SwitchListTile(
         title: const Text('Auto-sync to Health'),
-        subtitle: const Text(
-          'Write each new entry to Health Connect / Health',
-        ),
+        subtitle: const Text('Write each new entry to Health Connect / Health'),
         value: settings.autoSyncToHealth,
         onChanged: (v) => _updateOnly((c) => c.setAutoSyncToHealth(v)),
       ),
