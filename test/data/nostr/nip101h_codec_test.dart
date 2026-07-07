@@ -21,9 +21,9 @@ void main() {
 
   group('backupPlaintext (kind 30078 content)', () {
     test('serializes the full entry with the wire field names', () {
-      final json = jsonDecode(
-        backupPlaintext(fullEntry, weightEventId: 'abc123'),
-      ) as Map<String, dynamic>;
+      final json =
+          jsonDecode(backupPlaintext(fullEntry, weightEventId: 'abc123'))
+              as Map<String, dynamic>;
 
       expect(json['id'], 'entry-123');
       expect(json['recorded_at'], 1752000000);
@@ -45,8 +45,7 @@ void main() {
         recordedAt: DateTime.fromMillisecondsSinceEpoch(1752000000 * 1000),
         weightKg: 81.0,
       );
-      final json =
-          jsonDecode(backupPlaintext(sparse)) as Map<String, dynamic>;
+      final json = jsonDecode(backupPlaintext(sparse)) as Map<String, dynamic>;
 
       expect(json.containsKey('body_fat_percent'), isFalse);
       expect(json.containsKey('weight_event_id'), isFalse);
@@ -56,9 +55,9 @@ void main() {
 
   group('entryFromBackupMap (30078 JSON -> WeightEntry)', () {
     test('roundtrips through backupPlaintext', () {
-      final map = jsonDecode(
-        backupPlaintext(fullEntry, weightEventId: 'abc123'),
-      ) as Map<String, dynamic>;
+      final map =
+          jsonDecode(backupPlaintext(fullEntry, weightEventId: 'abc123'))
+              as Map<String, dynamic>;
       final entry = entryFromBackupMap(map, backupEventId: 'backup-event-id');
 
       expect(entry.id, fullEntry.id);

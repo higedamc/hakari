@@ -1,0 +1,12 @@
+# Extends the gitleaks default ruleset. Only add allowlist entries for
+# intentionally-published sample values — never for anything matching a
+# real secret prefix.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secrets"
+paths = [
+  # Public-key test vectors (npub/hex), no secret material.
+  '''test/data/bech32_test\.dart''',
+]

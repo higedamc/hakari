@@ -35,11 +35,7 @@ int _polymod(List<int> values) {
 /// Expand the human-readable part for checksum computation.
 List<int> _hrpExpand(String hrp) {
   final codes = hrp.codeUnits;
-  return <int>[
-    for (final c in codes) c >> 5,
-    0,
-    for (final c in codes) c & 31,
-  ];
+  return <int>[for (final c in codes) c >> 5, 0, for (final c in codes) c & 31];
 }
 
 bool _verifyChecksum(String hrp, List<int> data) {
@@ -57,8 +53,12 @@ List<int> _createChecksum(String hrp, List<int> data) {
 /// With [pad] true (encoding, 8->5) a final partial group is zero-padded.
 /// With [pad] false (decoding, 5->8) leftover bits must be zero padding of
 /// fewer than [fromBits] bits, otherwise a [FormatException] is thrown.
-List<int> convertBits(List<int> data, int fromBits, int toBits,
-    {required bool pad}) {
+List<int> convertBits(
+  List<int> data,
+  int fromBits,
+  int toBits, {
+  required bool pad,
+}) {
   var acc = 0;
   var bits = 0;
   final result = <int>[];
@@ -150,7 +150,8 @@ String decodeNpub(String npub) {
   final bytes = convertBits(decoded.data, 5, 8, pad: false);
   if (bytes.length != 32) {
     throw FormatException(
-        'bech32: npub payload must be 32 bytes, got ${bytes.length}');
+      'bech32: npub payload must be 32 bytes, got ${bytes.length}',
+    );
   }
   final buf = StringBuffer();
   for (final b in bytes) {

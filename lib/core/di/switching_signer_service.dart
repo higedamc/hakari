@@ -15,8 +15,8 @@ class SwitchingSignerService implements SignerService {
     this._settingsRepository, {
     required SignerService localSigner,
     required SignerService amberSigner,
-  })  : _localSigner = localSigner,
-        _amberSigner = amberSigner;
+  }) : _localSigner = localSigner,
+       _amberSigner = amberSigner;
 
   Future<SignerService> get _active async {
     final settings = await _settingsRepository.load();
@@ -34,11 +34,13 @@ class SwitchingSignerService implements SignerService {
 
   @override
   Future<String> nip44Encrypt(
-          String plaintext, String recipientPubkeyHex) async =>
-      (await _active).nip44Encrypt(plaintext, recipientPubkeyHex);
+    String plaintext,
+    String recipientPubkeyHex,
+  ) async => (await _active).nip44Encrypt(plaintext, recipientPubkeyHex);
 
   @override
   Future<String> nip44Decrypt(
-          String ciphertext, String senderPubkeyHex) async =>
-      (await _active).nip44Decrypt(ciphertext, senderPubkeyHex);
+    String ciphertext,
+    String senderPubkeyHex,
+  ) async => (await _active).nip44Decrypt(ciphertext, senderPubkeyHex);
 }

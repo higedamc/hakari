@@ -54,11 +54,26 @@ struct HakariClient {
 // ========================================
 
 /// Key material derived from / for a secret key.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct KeyBundle {
     pub nsec: String,
     pub npub: String,
     pub pubkey_hex: String,
+}
+
+// Manual Debug: a stray `{:?}` log line must never print the nsec.
+// (Drop-based zeroization is NOT possible here: flutter_rust_bridge's
+// generated code moves fields out of these structs, which Rust forbids
+// for Drop types. The nsec inevitably crosses the FFI boundary as a
+// plain String either way — a known, documented residual.)
+impl std::fmt::Debug for KeyBundle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeyBundle")
+            .field("nsec", &"<redacted>")
+            .field("npub", &self.npub)
+            .field("pubkey_hex", &self.pubkey_hex)
+            .finish()
+    }
 }
 
 /// How the client is allowed to operate.
@@ -73,13 +88,25 @@ pub enum ClientModeKind {
     PublicKeyOnly,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ClientMode {
     pub kind: ClientModeKind,
     /// Required when [kind] is SecretKey (nsec1... bech32 or hex).
     pub nsec: Option<String>,
     /// Required when [kind] is PublicKeyOnly.
     pub pubkey_hex: Option<String>,
+}
+
+// Manual Debug: never print the nsec (see KeyBundle for why there is
+// no Drop-based zeroization).
+impl std::fmt::Debug for ClientMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClientMode")
+            .field("kind", &self.kind)
+            .field("nsec", &self.nsec.as_ref().map(|_| "<redacted>"))
+            .field("pubkey_hex", &self.pubkey_hex)
+            .finish()
+    }
 }
 
 /// Tor routing mode. Orbot = SOCKS5 proxy (e.g. socks5://127.0.0.1:9050).
@@ -207,11 +234,19 @@ fn bundle_from_keys(keys: &Keys) -> Result<KeyBundle> {
 /// into a socket address.
 fn parse_proxy_url(proxy_url: &str) -> Result<SocketAddr> {
     let trimmed = proxy_url.trim();
+    // The nostr-sdk Connection proxy speaks SOCKS5 only — accepting
+    // socks4:// here would silently mislabel the actual protocol used.
+    if let Some(scheme_end) = trimmed.find("://") {
+        let scheme = &trimmed[..scheme_end];
+        if scheme != "socks5" && scheme != "socks5h" {
+            return Err(anyhow!(
+                "Unsupported proxy scheme '{scheme}': only socks5:// / socks5h:// are supported"
+            ));
+        }
+    }
     let without_scheme = trimmed
         .strip_prefix("socks5h://")
         .or_else(|| trimmed.strip_prefix("socks5://"))
-        .or_else(|| trimmed.strip_prefix("socks4a://"))
-        .or_else(|| trimmed.strip_prefix("socks4://"))
         .unwrap_or(trimmed)
         .trim_end_matches('/');
     without_scheme
@@ -621,7 +656,9 @@ pub fn fetch_health_events(
             .map(|event| RawEventFfi {
                 id: event.id.to_hex(),
                 kind: event.kind.as_u16(),
-                created_at: event.created_at.as_u64() as i64,
+                // Clamp: a hostile relay can claim absurd timestamps that
+                // would wrap negative in a plain `as i64` cast.
+                created_at: i64::try_from(event.created_at.as_u64()).unwrap_or(i64::MAX),
                 content: event.content.clone(),
                 tags: event
                     .tags
@@ -754,6 +791,12 @@ mod tests {
 
         assert!(parse_proxy_url("socks5://localhost:9050").is_err()); // no DNS names
         assert!(parse_proxy_url("").is_err());
+
+        // Only SOCKS5 is actually spoken — other schemes must be rejected,
+        // not silently treated as SOCKS5.
+        assert!(parse_proxy_url("socks4://127.0.0.1:9050").is_err());
+        assert!(parse_proxy_url("socks4a://127.0.0.1:9050").is_err());
+        assert!(parse_proxy_url("http://127.0.0.1:8118").is_err());
     }
 
     #[test]

@@ -7,6 +7,7 @@ import 'core/di/switching_signer_service.dart';
 import 'data/ble/blue_plus_scale_service.dart';
 import 'data/export/file_export_service.dart';
 import 'data/health/health_kit_connect_service.dart';
+import 'data/local/hive_encryption.dart';
 import 'data/local/hive_settings_repository.dart';
 import 'data/local/hive_weight_repository.dart';
 import 'data/nostr/local_key_signer_service.dart';
@@ -20,7 +21,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Hive.initFlutter();
-  final weightBox = await HiveWeightRepository.openBox();
+  // Health data and (in local-key mode) the nsec are encrypted at rest;
+  // the AES key lives in the platform keystore, and legacy plaintext
+  // boxes migrate on first open.
+  final cipher = await HiveEncryption.getCipher();
+  final weightBox = await HiveEncryption.openEncryptedBox<dynamic>(
+    HiveWeightRepository.boxName,
+    cipher,
+  );
   final settingsBox = await HiveSettingsRepository.openBox();
 
   await RustNostrService.initRustLib();
@@ -28,7 +36,7 @@ Future<void> main() async {
   final weightRepository = HiveWeightRepository(weightBox);
   final settingsRepository = HiveSettingsRepository(settingsBox);
 
-  final nsecStore = NsecStore();
+  final nsecStore = NsecStore(cipher: cipher);
   final signerService = SwitchingSignerService(
     settingsRepository,
     localSigner: LocalKeySignerService(nsecStore),

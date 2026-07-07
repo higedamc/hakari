@@ -25,8 +25,8 @@ class HealthSample {
 /// on Android, Apple HealthKit on iOS.
 class HealthKitConnectService implements HealthService {
   HealthKitConnectService({Health? health, Uuid? uuid})
-      : _health = health ?? Health(),
-        _uuid = uuid ?? const Uuid();
+    : _health = health ?? Health(),
+      _uuid = uuid ?? const Uuid();
 
   final Health _health;
   final Uuid _uuid;
@@ -75,21 +75,25 @@ class HealthKitConnectService implements HealthService {
     try {
       if (!_isSupportedPlatform) {
         throw const HealthFailure(
-            'Health store is not supported on this platform');
+          'Health store is not supported on this platform',
+        );
       }
       await _ensureConfigured();
       // requestAuthorization may block when permissions are already
       // granted, so check first (may return null on iOS for READ).
-      final has =
-          await _health.hasPermissions(_types, permissions: _permissions);
+      final has = await _health.hasPermissions(
+        _types,
+        permissions: _permissions,
+      );
       if (has == true) return true;
-      return await _health.requestAuthorization(_types,
-          permissions: _permissions);
+      return await _health.requestAuthorization(
+        _types,
+        permissions: _permissions,
+      );
     } on HealthFailure {
       rethrow;
     } catch (e) {
-      throw HealthPermissionFailure(
-          'Failed to request health permissions', e);
+      throw HealthPermissionFailure('Failed to request health permissions', e);
     }
   }
 
@@ -107,8 +111,9 @@ class HealthKitConnectService implements HealthService {
       );
       if (!wroteWeight) {
         throw const HealthPermissionFailure(
-            'Health store rejected the weight write '
-            '(permission not granted?)');
+          'Health store rejected the weight write '
+          '(permission not granted?)',
+        );
       }
       final bodyFat = entry.bodyFatPercent;
       if (bodyFat != null) {
@@ -122,8 +127,9 @@ class HealthKitConnectService implements HealthService {
         );
         if (!wroteFat) {
           throw const HealthPermissionFailure(
-              'Health store rejected the body fat write '
-              '(permission not granted?)');
+            'Health store rejected the body fat write '
+            '(permission not granted?)',
+          );
         }
       }
     } on HealthFailure {
@@ -186,8 +192,7 @@ class HealthKitConnectService implements HealthService {
   /// Converts a human body fat percentage (e.g. `23.5`) to the value the
   /// `health` plugin expects: HealthKit's `HKUnit.percent()` is a 0–1
   /// fraction, Health Connect's `Percentage` is 0–100.
-  static double bodyFatToPlatformValue(double percent,
-          {required bool isIOS}) =>
+  static double bodyFatToPlatformValue(double percent, {required bool isIOS}) =>
       isIOS ? percent / 100.0 : percent;
 
   /// Inverse of [bodyFatToPlatformValue]: normalizes a raw plugin value
@@ -229,14 +234,16 @@ class HealthKitConnectService implements HealthService {
       }
       if (bestFat != null) remainingFat.remove(bestFat);
 
-      entries.add(WeightEntry(
-        id: weight.uuid.isNotEmpty ? weight.uuid : generateId(),
-        recordedAt: weight.timestamp,
-        weightKg: weight.value,
-        bodyFatPercent: bestFat?.value,
-        source: MeasurementSource.healthSync,
-        syncedToHealth: true,
-      ));
+      entries.add(
+        WeightEntry(
+          id: weight.uuid.isNotEmpty ? weight.uuid : generateId(),
+          recordedAt: weight.timestamp,
+          weightKg: weight.value,
+          bodyFatPercent: bestFat?.value,
+          source: MeasurementSource.healthSync,
+          syncedToHealth: true,
+        ),
+      );
     }
     return entries;
   }

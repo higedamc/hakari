@@ -152,8 +152,9 @@ WeightMeasurement parseWeightMeasurement(List<int> data) {
   if (flags & 0x08 != 0) {
     bmi = reader.readUint16() * 0.1;
     final rawHeight = reader.readUint16();
-    heightMeters =
-        isImperial ? rawHeight * 0.1 * inchesToMeters : rawHeight * 0.001;
+    heightMeters = isImperial
+        ? rawHeight * 0.1 * inchesToMeters
+        : rawHeight * 0.001;
   }
 
   return WeightMeasurement(
@@ -249,8 +250,9 @@ BodyCompositionMeasurement parseBodyComposition(List<int> data) {
   double? heightMeters;
   if (flags & 0x0800 != 0) {
     final rawHeight = reader.readUint16();
-    heightMeters =
-        isImperial ? rawHeight * 0.1 * inchesToMeters : rawHeight * 0.001;
+    heightMeters = isImperial
+        ? rawHeight * 0.1 * inchesToMeters
+        : rawHeight * 0.001;
   }
 
   return BodyCompositionMeasurement(
@@ -288,8 +290,9 @@ class _ByteReader {
   int readUint8() {
     if (_offset + 1 > data.length) {
       throw FormatException(
-          'Truncated $characteristic payload: needed 1 byte at offset '
-          '$_offset, total length ${data.length}');
+        'Truncated $characteristic payload: needed 1 byte at offset '
+        '$_offset, total length ${data.length}',
+      );
     }
     return data[_offset++] & 0xFF;
   }
@@ -297,8 +300,9 @@ class _ByteReader {
   int readUint16() {
     if (_offset + 2 > data.length) {
       throw FormatException(
-          'Truncated $characteristic payload: needed 2 bytes at offset '
-          '$_offset, total length ${data.length}');
+        'Truncated $characteristic payload: needed 2 bytes at offset '
+        '$_offset, total length ${data.length}',
+      );
     }
     final value = (data[_offset] & 0xFF) | ((data[_offset + 1] & 0xFF) << 8);
     _offset += 2;
@@ -315,8 +319,9 @@ class _ByteReader {
     final seconds = readUint8();
     if (month > 12 || day > 31 || hours > 23 || minutes > 59 || seconds > 59) {
       throw FormatException(
-          'Invalid $characteristic date_time: '
-          '$year-$month-$day $hours:$minutes:$seconds');
+        'Invalid $characteristic date_time: '
+        '$year-$month-$day $hours:$minutes:$seconds',
+      );
     }
     // Per the spec, 0 means "unknown" for year/month/day; clamp to a valid
     // DateTime rather than failing the whole measurement.

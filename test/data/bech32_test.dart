@@ -41,8 +41,7 @@ void main() {
       // Flip the final character to another charset character.
       final last = nip19Npub[nip19Npub.length - 1];
       final swapped = last == 'q' ? 'p' : 'q';
-      final corrupted =
-          nip19Npub.substring(0, nip19Npub.length - 1) + swapped;
+      final corrupted = nip19Npub.substring(0, nip19Npub.length - 1) + swapped;
       expect(() => decodeNpub(corrupted), throwsFormatException);
     });
 
@@ -76,7 +75,9 @@ void main() {
     test('rejects payload that is not 32 bytes', () {
       // 16-byte payload under npub: valid bech32, wrong length.
       final short = bech32Encode(
-          'npub', convertBits(List<int>.filled(16, 0xab), 8, 5, pad: true));
+        'npub',
+        convertBits(List<int>.filled(16, 0xab), 8, 5, pad: true),
+      );
       expect(() => decodeNpub(short), throwsFormatException);
     });
   });
@@ -99,7 +100,10 @@ void main() {
     });
 
     test('rejects wrong-length hex', () {
-      expect(() => encodeNpub(nip19Hex.substring(0, 62)), throwsFormatException);
+      expect(
+        () => encodeNpub(nip19Hex.substring(0, 62)),
+        throwsFormatException,
+      );
       expect(() => encodeNpub('${nip19Hex}ab'), throwsFormatException);
       expect(() => encodeNpub(''), throwsFormatException);
     });
@@ -155,7 +159,8 @@ void main() {
     });
 
     test('rejects overlong input', () {
-      final long = 'an84characterslonghumanreadablepartthatcontains'
+      final long =
+          'an84characterslonghumanreadablepartthatcontains'
           'thenumber1andtheexcludedcharactersbio1569pvx';
       expect(() => bech32Decode(long), throwsFormatException);
     });

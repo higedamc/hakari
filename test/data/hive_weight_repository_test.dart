@@ -116,11 +116,13 @@ void main() {
   });
 
   test('getUnpublished returns only entries without nostrEventId', () async {
-    await repo.upsert(_entry(
-      id: 'published',
-      recordedAt: DateTime(2026, 7, 1),
-      nostrEventId: 'abc123',
-    ));
+    await repo.upsert(
+      _entry(
+        id: 'published',
+        recordedAt: DateTime(2026, 7, 1),
+        nostrEventId: 'abc123',
+      ),
+    );
     await repo.upsert(_entry(id: 'draft1', recordedAt: DateTime(2026, 7, 2)));
     await repo.upsert(_entry(id: 'draft2', recordedAt: DateTime(2026, 7, 4)));
 
@@ -128,26 +130,28 @@ void main() {
     expect(unpublished.map((e) => e.id).toList(), ['draft2', 'draft1']);
   });
 
-  test('watchAll emits current list immediately, then on every change',
-      () async {
-    await repo.upsert(_entry(id: 'a', recordedAt: DateTime(2026, 7, 1)));
+  test(
+    'watchAll emits current list immediately, then on every change',
+    () async {
+      await repo.upsert(_entry(id: 'a', recordedAt: DateTime(2026, 7, 1)));
 
-    final events = <List<WeightEntry>>[];
-    final sub = repo.watchAll().listen(events.add);
-    addTearDown(sub.cancel);
+      final events = <List<WeightEntry>>[];
+      final sub = repo.watchAll().listen(events.add);
+      addTearDown(sub.cancel);
 
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(events, hasLength(1));
-    expect(events.first.single.id, 'a');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(events, hasLength(1));
+      expect(events.first.single.id, 'a');
 
-    await repo.upsert(_entry(id: 'b', recordedAt: DateTime(2026, 7, 2)));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(events, hasLength(2));
-    expect(events.last.map((e) => e.id).toList(), ['b', 'a']);
+      await repo.upsert(_entry(id: 'b', recordedAt: DateTime(2026, 7, 2)));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(events, hasLength(2));
+      expect(events.last.map((e) => e.id).toList(), ['b', 'a']);
 
-    await repo.delete('a');
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(events, hasLength(3));
-    expect(events.last.map((e) => e.id).toList(), ['b']);
-  });
+      await repo.delete('a');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(events, hasLength(3));
+      expect(events.last.map((e) => e.id).toList(), ['b']);
+    },
+  );
 }

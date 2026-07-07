@@ -29,6 +29,21 @@ class MainActivity : FlutterFragmentActivity() {
         private const val APP_NAME = "hakari"
         private const val AMBER_REQUEST_CODE_BASE = 9200
         private const val AMBER_REQUEST_CODE_MAX = 9299
+
+        /**
+         * SHA-256 digests of Amber's known signing certificates (both
+         * signed by greenart7c3; extracted with `apksigner verify
+         * --print-certs` from the v6.2.3 release APKs). Package names can
+         * be squatted by sideloaded apps — health data and pubkey trust
+         * must not leave this app unless the installed package is signed
+         * by one of these.
+         */
+        private val AMBER_CERT_SHA256_ALLOWLIST = setOf(
+            // GitHub releases / zapstore ("play" flavor)
+            "e8ab8c69333b68636dd46ce242408c79553a7fd9055d054d61daababada53bbf",
+            // F-Droid flavor (reproducible, developer-signed)
+            "56dc631996a55c2284790448c7dc9f1dd05df596b2ce4882313633f5602e5fe4",
+        )
     }
 
     /** requestCode -> (pending Flutter result, NIP-55 request type). */
@@ -196,16 +211,82 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    /** True when an activity handles the nostrsigner: scheme (NIP-55). */
-    private fun isAmberInstalled(): Boolean {
-        return try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("nostrsigner:"))
-            @Suppress("DEPRECATION")
-            packageManager.resolveActivity(intent, 0) != null
+    /**
+     * True when the pinned Amber package is installed AND signed by a
+     * known greenart7c3 certificate. Every launch is pinned to
+     * [AMBER_PACKAGE], so a generic "anything handles nostrsigner:"
+     * check would report signers we never actually talk to.
+     */
+    private fun isAmberInstalled(): Boolean = verifyAmberSignature() == null
+
+    /**
+     * Verifies the installed Amber package against
+     * [AMBER_CERT_SHA256_ALLOWLIST].
+     *
+     * @return null when trusted; otherwise a human-readable reason
+     * (not installed / unrecognized signature). Callers must refuse to
+     * send data to Amber unless this returns null.
+     */
+    private fun verifyAmberSignature(): String? {
+        val signatures = try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val info = packageManager.getPackageInfo(
+                    AMBER_PACKAGE,
+                    android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                )
+                val signingInfo = info.signingInfo ?: return "Amber has no signing info"
+                if (signingInfo.hasMultipleSigners()) {
+                    signingInfo.apkContentsSigners
+                } else {
+                    signingInfo.signingCertificateHistory
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val info = packageManager.getPackageInfo(
+                    AMBER_PACKAGE,
+                    android.content.pm.PackageManager.GET_SIGNATURES
+                )
+                @Suppress("DEPRECATION")
+                info.signatures
+            }
+        } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+            return "Amber is not installed"
         } catch (e: Exception) {
-            android.util.Log.w(TAG, "isAmberInstalled check failed", e)
-            false
+            android.util.Log.w(TAG, "Amber signature lookup failed", e)
+            return "Amber signature lookup failed"
         }
+        if (signatures.isNullOrEmpty()) return "Amber has no signatures"
+
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val observed = signatures.map { sig ->
+            digest.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
+        }
+        // Multi-signer APKs are trusted only if EVERY signer is known;
+        // single/rotated certs are trusted if ANY history entry is known.
+        val trusted = if (observed.size > 1) {
+            observed.all { it in AMBER_CERT_SHA256_ALLOWLIST }
+        } else {
+            observed.any { it in AMBER_CERT_SHA256_ALLOWLIST }
+        }
+        if (!trusted) {
+            android.util.Log.e(
+                TAG,
+                "Installed $AMBER_PACKAGE has unrecognized signing cert(s): $observed"
+            )
+            return "Installed Amber has an unrecognized signature"
+        }
+        return null
+    }
+
+    /**
+     * Runs [verifyAmberSignature] and fails [result] with AMBER_UNTRUSTED
+     * when the installed package cannot be trusted. Returns true when it
+     * is safe to proceed.
+     */
+    private fun requireTrustedAmber(result: MethodChannel.Result): Boolean {
+        val reason = verifyAmberSignature() ?: return true
+        result.error("AMBER_UNTRUSTED", reason, null)
+        return false
     }
 
     /**
@@ -217,6 +298,7 @@ class MainActivity : FlutterFragmentActivity() {
         requestType: String,
         result: MethodChannel.Result
     ) {
+        if (!requireTrustedAmber(result)) return
         val requestCode = nextRequestCode
         nextRequestCode =
             if (nextRequestCode >= AMBER_REQUEST_CODE_MAX) AMBER_REQUEST_CODE_BASE
@@ -329,6 +411,7 @@ class MainActivity : FlutterFragmentActivity() {
         resultColumns: List<String>,
         result: MethodChannel.Result
     ) {
+        if (!requireTrustedAmber(result)) return
         try {
             val cursor = contentResolver.query(
                 Uri.parse(uri),

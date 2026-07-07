@@ -1,25 +1,31 @@
 import 'package:hive/hive.dart';
 
+import '../local/hive_encryption.dart';
+
 /// Persists the local secret key (nsec) for [SignerMode.localKey].
 ///
-/// SECURITY TRADEOFF (v1): the key lives in a plain Hive box named 'secure'
-/// inside the app sandbox. It is protected by OS app sandboxing only — NOT
-/// by hardware-backed keystore encryption. Acceptable for v1 because:
-/// - privacy-sensitive users are expected to use Amber (the secret then
-///   never touches this app at all), and
-/// - flutter_secure_storage is not in pubspec and pubspec is frozen for
-///   this leaf.
-/// TODO(v2): move to flutter_secure_storage / Android Keystore.
+/// When constructed with a [HiveAesCipher] (production path, see
+/// main.dart) the box is AES-encrypted with a key held in the platform
+/// keystore via [HiveEncryption]; a legacy plaintext 'secure' box is
+/// migrated on first open. Without a cipher (tests) it falls back to a
+/// plain box. Note the UI is Amber-only — with Amber the secret never
+/// touches this app at all.
 class NsecStore {
+  NsecStore({HiveAesCipher? cipher}) : _cipher = cipher;
+
   static const String boxName = 'secure';
   static const String _nsecKey = 'nsec';
 
+  final HiveAesCipher? _cipher;
   Box<String>? _box;
 
   Future<Box<String>> _open() async {
     final box = _box;
     if (box != null && box.isOpen) return box;
-    return _box = await Hive.openBox<String>(boxName);
+    final cipher = _cipher;
+    return _box = cipher != null
+        ? await HiveEncryption.openEncryptedBox<String>(boxName, cipher)
+        : await Hive.openBox<String>(boxName);
   }
 
   Future<String?> read() async => (await _open()).get(_nsecKey);

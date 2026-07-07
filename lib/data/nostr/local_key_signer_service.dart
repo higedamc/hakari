@@ -57,7 +57,10 @@ class LocalKeySignerService implements SignerService {
   }
 
   @override
-  Future<String> nip44Encrypt(String plaintext, String recipientPubkeyHex) async {
+  Future<String> nip44Encrypt(
+    String plaintext,
+    String recipientPubkeyHex,
+  ) async {
     final nsec = await _requireNsec();
     try {
       return await bridge.nip44EncryptLocal(
