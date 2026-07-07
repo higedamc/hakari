@@ -11,23 +11,60 @@ cargokit + nostr-sdk + Amber + Tor).
 - **Measurements**: weight + full TANITA-style body composition (body fat %, body water %,
   muscle mass, visceral fat rating, bone mass, BMR, metabolic age), manual entry, 90-day trend chart.
 - **BLE scales**: standard Bluetooth SIG Weight Scale Service (0x181D) and Body Composition
-  Service (0x181B) with full 0x2A9D / 0x2A9C GATT parsing. TANITA note: modern TANITA consumer
-  scales (BC-401/768, RD-9xx) use a proprietary, account-bound BLE protocol — they are surfaced
-  in scan results, while any scale exposing the standard services (and legacy HMM smartLAB "WS"
-  units, as supported by WeightLogger) works end-to-end.
+  Service (0x181B) with full 0x2A9D / 0x2A9C GATT parsing. Any scale exposing the standard
+  services (including legacy HMM smartLAB "WS" units, as supported by WeightLogger) works
+  end-to-end. For TANITA hardware see [TANITA compatibility](#tanita-compatibility) below.
 - **Health Connect / Apple Health**: read & write weight and body fat (`health` 13.x),
   auto-sync on save, 90-day import with dedupe.
 - **Nostr (NIP-101h)**: publishes each measurement as kind **1351** weight events
   (`unit`/`t:health`/`t:weight` tags) plus a kind **30078** (NIP-78) encrypted full-entry backup
   (`d = hakari:entry:<uuid>`), NIP-44 self-encrypted by default; restore via relay fetch.
-- **Amber (NIP-55)**: external-signer login, event signing and NIP-44 encrypt/decrypt via
-  `nostrsigner:` intents + ContentProvider fallback — the app never sees your secret key.
-  Local-key mode is also available (see tradeoff note in `lib/data/nostr/nsec_store.dart`).
+- **Amber (NIP-55)**: login is Amber-only — external-signer event signing and NIP-44
+  encrypt/decrypt via `nostrsigner:` intents + ContentProvider fallback, so the app never
+  sees your secret key. First-run onboarding detects Amber, links to its releases page when
+  missing, and is skippable (the app works fully offline; connect later from Settings).
 - **Tor / Orbot**: relay websockets can be routed through Orbot's SOCKS5 proxy
   (`socks5://127.0.0.1:9050`, configurable) via nostr-sdk connection proxy.
 - **Export**: WeightLogger-compatible CSV and versioned JSON backup, via system share sheet.
 - **No telemetry.** No analytics, no crash reporting, no network calls other than the relays
   and health stores you configure.
+
+## TANITA compatibility
+
+Research findings that shaped the BLE design:
+
+- **Modern TANITA consumer scales (BC-401/768, RD-9xx family) use a proprietary,
+  account-bound BLE protocol.** They pair against TANITA's own apps and do not expose the
+  standard GATT weight / body-composition services — even openScale does not support them.
+- WeightLogger's "TANITA support" is likewise not BLE: it talks **ANT+** to the discontinued
+  BC-1000.
+- Hakari therefore ships the pragmatic split: **full support for any standard-GATT scale**,
+  plus **detection-with-guidance for TANITA units** instead of a silent failure.
+
+What happens with a real TANITA scale:
+
+1. Open the Bluetooth scale screen (Bluetooth FAB on Home) — scanning starts automatically.
+2. Step on the scale to wake it. TANITA units advertise as `TNT_...` / `TANITA...` and are
+   recognized as scales, so the device shows up in the scan list.
+3. Tapping it attempts a standard connection; because the proprietary protocol exposes no
+   0x2A9D / 0x2A9C measurement characteristics, Hakari shows an explanatory message
+   ("TANITA consumer scales use a proprietary protocol that cannot be read") instead of
+   hanging or failing silently.
+
+If first-class TANITA integration is ever needed, the correct route is the **Health Planet
+cloud API** (TANITA's official OAuth REST API) — sync measurements from the cloud rather
+than reverse-engineering the BLE link. It can be added as an optional service behind the
+existing `ScaleService` / `HealthService` seams.
+
+## Screenshots
+
+Store-listing assets live in [`screenshots/`](screenshots/) (Pixel-class emulator, API 35):
+
+| | | |
+|---|---|---|
+| ![Welcome](screenshots/01_onboarding_welcome.png) | ![Privacy](screenshots/02_onboarding_privacy.png) | ![Home](screenshots/03_home.png) |
+| ![Add entry](screenshots/04_add_entry.png) | ![Scale scan](screenshots/05_scale_scan.png) | ![Settings](screenshots/06_settings_privacy.png) |
+| ![Relay status](screenshots/07_relay_status.png) | ![Synced](screenshots/08_home_synced.png) | |
 
 ## Architecture
 
