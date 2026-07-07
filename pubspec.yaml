@@ -41,7 +41,7 @@ dependencies:
   url_launcher: ^6.3.1
 
   # At-rest encryption: Hive AES key held in Keystore/Keychain
-  flutter_secure_storage: ^9.2.4
+  flutter_secure_storage: ^10.3.1
 
   # Utils
   intl: ^0.20.2
