@@ -21,11 +21,16 @@
     <uses-permission android:name="android.permission.health.READ_BODY_FAT"/>
     <uses-permission android:name="android.permission.health.WRITE_BODY_FAT"/>
 
+    <!-- allowBackup=false: Hive boxes hold health data (and a signing key
+         in local-key mode) in plaintext; Android auto-backup would upload
+         them to cloud storage. No cleartext traffic: relays are wss://
+         (loopback/.onion ws:// goes through the Rust stack, which the
+         manifest flag does not govern anyway). -->
     <application
         android:label="Hakari"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
