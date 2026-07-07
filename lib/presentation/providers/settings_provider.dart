@@ -31,14 +31,12 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       _update((s) => s.copyWith(relays: relays.toList()));
 
   Future<AppSettings> addRelay(String url) => _update(
-        (s) => s.relays.contains(url)
-            ? s
-            : s.copyWith(relays: [...s.relays, url]),
-      );
+    (s) => s.relays.contains(url) ? s : s.copyWith(relays: [...s.relays, url]),
+  );
 
   Future<AppSettings> removeRelay(String url) => _update(
-        (s) => s.copyWith(relays: s.relays.where((r) => r != url).toList()),
-      );
+    (s) => s.copyWith(relays: s.relays.where((r) => r != url).toList()),
+  );
 
   Future<AppSettings> resetRelaysToDefaults() =>
       _update((s) => s.copyWith(relays: AppSettings.defaultRelays.toList()));
@@ -57,8 +55,12 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       _update((s) => s.copyWith(signerMode: mode, pubkeyHex: pubkeyHex));
 
   Future<AppSettings> logout() => _update(
-        (s) => s.copyWith(signerMode: SignerMode.none, clearPubkey: true),
-      );
+    (s) => s.copyWith(signerMode: SignerMode.none, clearPubkey: true),
+  );
+
+  /// Marks first-run onboarding as finished (logged in or skipped).
+  Future<AppSettings> completeOnboarding() =>
+      _update((s) => s.copyWith(onboardingComplete: true));
 
   // Toggles --------------------------------------------------------------
 
@@ -75,7 +77,6 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       _update((s) => s.copyWith(useMetricUnits: value));
 }
 
-final settingsProvider =
-    AsyncNotifierProvider<SettingsController, AppSettings>(
+final settingsProvider = AsyncNotifierProvider<SettingsController, AppSettings>(
   SettingsController.new,
 );
