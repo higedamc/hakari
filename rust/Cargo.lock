@@ -722,21 +722,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hakari_core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "flutter_rust_bridge",
- "hex",
- "nostr-sdk",
- "once_cell",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1401,6 +1386,21 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rust"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "flutter_rust_bridge",
+ "hex",
+ "nostr-sdk",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
