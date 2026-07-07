@@ -14,7 +14,8 @@ import '../../domain/services/export_service.dart';
 ///
 /// The CSV column set matches WeightLogger's export format.
 class FileExportService implements ExportService {
-  static const String csvHeader = 'recorded_at,weight_kg,body_fat_percent,'
+  static const String csvHeader =
+      'recorded_at,weight_kg,body_fat_percent,'
       'body_water_percent,muscle_mass_kg,visceral_fat_rating,bone_mass_kg,'
       'basal_metabolic_rate_kcal,metabolic_age,source';
 
@@ -49,14 +50,27 @@ class FileExportService implements ExportService {
 
   /// RFC 4180 style escaping: fields containing a comma, double quote,
   /// or newline are wrapped in double quotes with inner quotes doubled.
+  ///
+  /// Also guards against spreadsheet formula injection: a non-numeric
+  /// field starting with `=`, `+`, `-`, `@`, tab or CR would be executed
+  /// as a formula by Excel/LibreOffice, so it gets a leading `'`. Today
+  /// every column is a number, ISO timestamp or enum name — this matters
+  /// the moment an attacker-controlled string (e.g. a BLE device name)
+  /// is ever added as a column.
   static String escapeCsvField(String field) {
-    if (field.contains(',') ||
-        field.contains('"') ||
-        field.contains('\n') ||
-        field.contains('\r')) {
-      return '"${field.replaceAll('"', '""')}"';
+    var value = field;
+    const formulaTriggers = ['=', '+', '-', '@', '\t', '\r'];
+    final startsRisky = value.isNotEmpty && formulaTriggers.contains(value[0]);
+    if (startsRisky && num.tryParse(value) == null) {
+      value = "'$value";
     }
-    return field;
+    if (value.contains(',') ||
+        value.contains('"') ||
+        value.contains('\n') ||
+        value.contains('\r')) {
+      return '"${value.replaceAll('"', '""')}"';
+    }
+    return value;
   }
 
   /// Builds the versioned JSON backup document. Pure.
@@ -95,8 +109,21 @@ class FileExportService implements ExportService {
       final docs = await getApplicationDocumentsDirectory();
       final exportDir = Directory('${docs.path}/exports');
       await exportDir.create(recursive: true);
+      // Exports are unencrypted health data; don't let old ones pile up
+      // on disk forever — only the file being shared right now is needed.
+      await for (final old in exportDir.list()) {
+        if (old is File && old.path.contains('hakari_export_')) {
+          try {
+            await old.delete();
+          } catch (_) {
+            // Best effort; a locked file must not break the new export.
+          }
+        }
+      }
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final file = File('${exportDir.path}/hakari_export_$timestamp.$extension');
+      final file = File(
+        '${exportDir.path}/hakari_export_$timestamp.$extension',
+      );
       await file.writeAsString(content, flush: true);
       return file.path;
     } catch (e) {

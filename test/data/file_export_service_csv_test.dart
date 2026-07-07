@@ -23,6 +23,21 @@ void main() {
       expect(FileExportService.escapeCsvField('a\nb'), '"a\nb"');
       expect(FileExportService.escapeCsvField('a\r\nb'), '"a\r\nb"');
     });
+
+    test('neutralizes spreadsheet formula triggers in non-numeric fields', () {
+      expect(
+        FileExportService.escapeCsvField('=HYPERLINK("http://evil")'),
+        '"\'=HYPERLINK(""http://evil"")"',
+      );
+      expect(FileExportService.escapeCsvField('@cmd'), "'@cmd");
+      expect(FileExportService.escapeCsvField('+SUM(1)'), "'+SUM(1)");
+      expect(FileExportService.escapeCsvField('-2+3'), "'-2+3");
+    });
+
+    test('keeps negative numbers as numbers', () {
+      expect(FileExportService.escapeCsvField('-2.5'), '-2.5');
+      expect(FileExportService.escapeCsvField('+7'), '+7');
+    });
   });
 
   group('buildCsv', () {
@@ -94,7 +109,8 @@ void main() {
       );
 
       final decoded =
-          jsonDecode(FileExportService.buildJson([entry])) as Map<String, dynamic>;
+          jsonDecode(FileExportService.buildJson([entry]))
+              as Map<String, dynamic>;
       expect(decoded['app'], 'hakari');
       expect(decoded['version'], 1);
       final entries = decoded['entries'] as List;
@@ -103,10 +119,7 @@ void main() {
       expect(map['id'], 'a');
       expect(map['weightKg'], 70.0);
       expect(map['nostrEventId'], 'abc');
-      expect(
-        map['recordedAt'],
-        DateTime(2026, 7, 1).millisecondsSinceEpoch,
-      );
+      expect(map['recordedAt'], DateTime(2026, 7, 1).millisecondsSinceEpoch);
     });
   });
 }
