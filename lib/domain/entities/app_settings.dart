@@ -26,6 +26,9 @@ class AppSettings {
 
   final bool useMetricUnits;
 
+  /// First-run onboarding has been finished (logged in or skipped).
+  final bool onboardingComplete;
+
   const AppSettings({
     this.relays = defaultRelays,
     this.torMode = TorMode.disabled,
@@ -36,6 +39,7 @@ class AppSettings {
     this.autoSyncToHealth = false,
     this.autoPublishToNostr = false,
     this.useMetricUnits = true,
+    this.onboardingComplete = false,
   });
 
   static const defaultRelays = [
@@ -55,6 +59,7 @@ class AppSettings {
     bool? autoSyncToHealth,
     bool? autoPublishToNostr,
     bool? useMetricUnits,
+    bool? onboardingComplete,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -66,36 +71,39 @@ class AppSettings {
       autoSyncToHealth: autoSyncToHealth ?? this.autoSyncToHealth,
       autoPublishToNostr: autoPublishToNostr ?? this.autoPublishToNostr,
       useMetricUnits: useMetricUnits ?? this.useMetricUnits,
+      onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'relays': relays,
-        'torMode': torMode.name,
-        'proxyUrl': proxyUrl,
-        'signerMode': signerMode.name,
-        'pubkeyHex': pubkeyHex,
-        'encryptHealthEvents': encryptHealthEvents,
-        'autoSyncToHealth': autoSyncToHealth,
-        'autoPublishToNostr': autoPublishToNostr,
-        'useMetricUnits': useMetricUnits,
-      };
+    'relays': relays,
+    'torMode': torMode.name,
+    'proxyUrl': proxyUrl,
+    'signerMode': signerMode.name,
+    'pubkeyHex': pubkeyHex,
+    'encryptHealthEvents': encryptHealthEvents,
+    'autoSyncToHealth': autoSyncToHealth,
+    'autoPublishToNostr': autoPublishToNostr,
+    'useMetricUnits': useMetricUnits,
+    'onboardingComplete': onboardingComplete,
+  };
 
   factory AppSettings.fromMap(Map<dynamic, dynamic> map) => AppSettings(
-        relays: (map['relays'] as List?)?.cast<String>() ?? defaultRelays,
-        torMode: TorMode.values.firstWhere(
-          (t) => t.name == map['torMode'],
-          orElse: () => TorMode.disabled,
-        ),
-        proxyUrl: (map['proxyUrl'] as String?) ?? 'socks5://127.0.0.1:9050',
-        signerMode: SignerMode.values.firstWhere(
-          (s) => s.name == map['signerMode'],
-          orElse: () => SignerMode.none,
-        ),
-        pubkeyHex: map['pubkeyHex'] as String?,
-        encryptHealthEvents: (map['encryptHealthEvents'] as bool?) ?? true,
-        autoSyncToHealth: (map['autoSyncToHealth'] as bool?) ?? false,
-        autoPublishToNostr: (map['autoPublishToNostr'] as bool?) ?? false,
-        useMetricUnits: (map['useMetricUnits'] as bool?) ?? true,
-      );
+    relays: (map['relays'] as List?)?.cast<String>() ?? defaultRelays,
+    torMode: TorMode.values.firstWhere(
+      (t) => t.name == map['torMode'],
+      orElse: () => TorMode.disabled,
+    ),
+    proxyUrl: (map['proxyUrl'] as String?) ?? 'socks5://127.0.0.1:9050',
+    signerMode: SignerMode.values.firstWhere(
+      (s) => s.name == map['signerMode'],
+      orElse: () => SignerMode.none,
+    ),
+    pubkeyHex: map['pubkeyHex'] as String?,
+    encryptHealthEvents: (map['encryptHealthEvents'] as bool?) ?? true,
+    autoSyncToHealth: (map['autoSyncToHealth'] as bool?) ?? false,
+    autoPublishToNostr: (map['autoPublishToNostr'] as bool?) ?? false,
+    useMetricUnits: (map['useMetricUnits'] as bool?) ?? true,
+    onboardingComplete: (map['onboardingComplete'] as bool?) ?? false,
+  );
 }
