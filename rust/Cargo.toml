@@ -14,7 +14,7 @@ crate-type = ["cdylib", "staticlib"]
 flutter_rust_bridge = "=2.12.0"
 
 # Nostr SDK (Tor goes via Orbot SOCKS proxy — no embedded tor/arti)
-nostr-sdk = { version = "0.37", features = ["nip44"] }
+nostr-sdk = { version = "0.44", features = ["nip44"] }
 
 # Async runtime
 tokio = { version = "1.41", features = ["full"] }
