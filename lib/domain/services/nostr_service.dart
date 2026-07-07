@@ -34,7 +34,10 @@ abstract interface class NostrService {
 
   /// Publish one measurement as NIP-101h event(s).
   /// When [encrypt] is true the content is NIP-44 self-encrypted.
-  Future<PublishResult> publishEntry(WeightEntry entry, {required bool encrypt});
+  Future<PublishResult> publishEntry(
+    WeightEntry entry, {
+    required bool encrypt,
+  });
 
   /// Fetch our own NIP-101h weight events since [since]
   /// (decrypting when needed) for restore/sync.

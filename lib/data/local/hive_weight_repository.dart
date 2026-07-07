@@ -30,10 +30,9 @@ class HiveWeightRepository implements WeightRepository {
   }
 
   List<WeightEntry> _readAllSorted() {
-    final entries = _box.values
-        .map((raw) => WeightEntry.fromMap(raw as Map))
-        .toList()
-      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    final entries =
+        _box.values.map((raw) => WeightEntry.fromMap(raw as Map)).toList()
+          ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
     return entries;
   }
 

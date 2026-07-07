@@ -68,40 +68,39 @@ class WeightEntry {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'recordedAt': recordedAt.millisecondsSinceEpoch,
-        'weightKg': weightKg,
-        'bodyFatPercent': bodyFatPercent,
-        'bodyWaterPercent': bodyWaterPercent,
-        'muscleMassKg': muscleMassKg,
-        'visceralFatRating': visceralFatRating,
-        'boneMassKg': boneMassKg,
-        'basalMetabolicRateKcal': basalMetabolicRateKcal,
-        'metabolicAge': metabolicAge,
-        'source': source.name,
-        'nostrEventId': nostrEventId,
-        'syncedToHealth': syncedToHealth,
-      };
+    'id': id,
+    'recordedAt': recordedAt.millisecondsSinceEpoch,
+    'weightKg': weightKg,
+    'bodyFatPercent': bodyFatPercent,
+    'bodyWaterPercent': bodyWaterPercent,
+    'muscleMassKg': muscleMassKg,
+    'visceralFatRating': visceralFatRating,
+    'boneMassKg': boneMassKg,
+    'basalMetabolicRateKcal': basalMetabolicRateKcal,
+    'metabolicAge': metabolicAge,
+    'source': source.name,
+    'nostrEventId': nostrEventId,
+    'syncedToHealth': syncedToHealth,
+  };
 
   factory WeightEntry.fromMap(Map<dynamic, dynamic> map) => WeightEntry(
-        id: map['id'] as String,
-        recordedAt:
-            DateTime.fromMillisecondsSinceEpoch(map['recordedAt'] as int),
-        weightKg: (map['weightKg'] as num).toDouble(),
-        bodyFatPercent: (map['bodyFatPercent'] as num?)?.toDouble(),
-        bodyWaterPercent: (map['bodyWaterPercent'] as num?)?.toDouble(),
-        muscleMassKg: (map['muscleMassKg'] as num?)?.toDouble(),
-        visceralFatRating: map['visceralFatRating'] as int?,
-        boneMassKg: (map['boneMassKg'] as num?)?.toDouble(),
-        basalMetabolicRateKcal: map['basalMetabolicRateKcal'] as int?,
-        metabolicAge: map['metabolicAge'] as int?,
-        source: MeasurementSource.values.firstWhere(
-          (s) => s.name == map['source'],
-          orElse: () => MeasurementSource.manual,
-        ),
-        nostrEventId: map['nostrEventId'] as String?,
-        syncedToHealth: (map['syncedToHealth'] as bool?) ?? false,
-      );
+    id: map['id'] as String,
+    recordedAt: DateTime.fromMillisecondsSinceEpoch(map['recordedAt'] as int),
+    weightKg: (map['weightKg'] as num).toDouble(),
+    bodyFatPercent: (map['bodyFatPercent'] as num?)?.toDouble(),
+    bodyWaterPercent: (map['bodyWaterPercent'] as num?)?.toDouble(),
+    muscleMassKg: (map['muscleMassKg'] as num?)?.toDouble(),
+    visceralFatRating: map['visceralFatRating'] as int?,
+    boneMassKg: (map['boneMassKg'] as num?)?.toDouble(),
+    basalMetabolicRateKcal: map['basalMetabolicRateKcal'] as int?,
+    metabolicAge: map['metabolicAge'] as int?,
+    source: MeasurementSource.values.firstWhere(
+      (s) => s.name == map['source'],
+      orElse: () => MeasurementSource.manual,
+    ),
+    nostrEventId: map['nostrEventId'] as String?,
+    syncedToHealth: (map['syncedToHealth'] as bool?) ?? false,
+  );
 }
 
 enum MeasurementSource { manual, bleScale, healthSync, imported }

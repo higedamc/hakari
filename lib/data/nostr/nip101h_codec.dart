@@ -76,8 +76,7 @@ WeightEntry entryFromBackupMap(
     muscleMassKg: (map['muscle_mass_kg'] as num?)?.toDouble(),
     visceralFatRating: (map['visceral_fat_rating'] as num?)?.toInt(),
     boneMassKg: (map['bone_mass_kg'] as num?)?.toDouble(),
-    basalMetabolicRateKcal:
-        (map['basal_metabolic_rate_kcal'] as num?)?.toInt(),
+    basalMetabolicRateKcal: (map['basal_metabolic_rate_kcal'] as num?)?.toInt(),
     metabolicAge: (map['metabolic_age'] as num?)?.toInt(),
     source: MeasurementSource.imported,
     nostrEventId: weightEventIdOfBackup(map) ?? backupEventId,
@@ -96,8 +95,9 @@ WeightEntry? entryFromWeightEvent({
   final weightKg = double.tryParse(content.trim());
   if (weightKg == null) return null;
 
-  DateTime recordedAt =
-      DateTime.fromMillisecondsSinceEpoch(createdAtUnix * 1000);
+  DateTime recordedAt = DateTime.fromMillisecondsSinceEpoch(
+    createdAtUnix * 1000,
+  );
   final timestamp = tagValue(tags, 'timestamp');
   if (timestamp != null) {
     recordedAt = DateTime.tryParse(timestamp) ?? recordedAt;

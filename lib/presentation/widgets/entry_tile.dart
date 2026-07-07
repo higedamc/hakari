@@ -8,18 +8,18 @@ final DateFormat _dateFormat = DateFormat('EEE, MMM d, y');
 final DateFormat _timeFormat = DateFormat('HH:mm');
 
 IconData _sourceIcon(MeasurementSource source) => switch (source) {
-      MeasurementSource.manual => Icons.edit_outlined,
-      MeasurementSource.bleScale => Icons.bluetooth,
-      MeasurementSource.healthSync => Icons.favorite_outline,
-      MeasurementSource.imported => Icons.download_outlined,
-    };
+  MeasurementSource.manual => Icons.edit_outlined,
+  MeasurementSource.bleScale => Icons.bluetooth,
+  MeasurementSource.healthSync => Icons.favorite_outline,
+  MeasurementSource.imported => Icons.download_outlined,
+};
 
 String _sourceLabel(MeasurementSource source) => switch (source) {
-      MeasurementSource.manual => 'Entered manually',
-      MeasurementSource.bleScale => 'Bluetooth scale',
-      MeasurementSource.healthSync => 'Health sync',
-      MeasurementSource.imported => 'Imported',
-    };
+  MeasurementSource.manual => 'Entered manually',
+  MeasurementSource.bleScale => 'Bluetooth scale',
+  MeasurementSource.healthSync => 'Health sync',
+  MeasurementSource.imported => 'Imported',
+};
 
 /// Card row for a single measurement: bold weight, composition chips,
 /// date, a source icon and a "published to Nostr" indicator.
@@ -145,9 +145,9 @@ class _CompositionChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
       ),
     );
   }

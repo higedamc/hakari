@@ -129,8 +129,10 @@ class NostrSyncController extends Notifier<SyncStatus> {
       final fetched = await _nostr.fetchOwnEntries(since: since);
       final existing = await _repo.getAll();
       final knownIds = existing.map((e) => e.id).toSet();
-      final knownEventIds =
-          existing.map((e) => e.nostrEventId).whereType<String>().toSet();
+      final knownEventIds = existing
+          .map((e) => e.nostrEventId)
+          .whereType<String>()
+          .toSet();
       var imported = 0;
       for (final entry in fetched) {
         if (knownIds.contains(entry.id)) continue;
@@ -146,7 +148,7 @@ class NostrSyncController extends Notifier<SyncStatus> {
         imported == 0
             ? 'Already up to date.'
             : 'Imported $imported ${imported == 1 ? 'entry' : 'entries'} '
-                'from relays.',
+                  'from relays.',
       );
     } on Failure catch (f) {
       state = SyncStatus(SyncPhase.error, f.message);

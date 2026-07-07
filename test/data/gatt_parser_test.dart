@@ -6,13 +6,13 @@ List<int> u16(int value) => [value & 0xFF, (value >> 8) & 0xFF];
 
 /// GATT date_time: year uint16 LE, month, day, hours, minutes, seconds.
 List<int> dateTimeBytes(DateTime dt) => [
-      ...u16(dt.year),
-      dt.month,
-      dt.day,
-      dt.hour,
-      dt.minute,
-      dt.second,
-    ];
+  ...u16(dt.year),
+  dt.month,
+  dt.day,
+  dt.hour,
+  dt.minute,
+  dt.second,
+];
 
 void main() {
   group('parseWeightMeasurement (0x2A9D)', () {
@@ -86,8 +86,10 @@ void main() {
 
     test('throws FormatException when flagged timestamp is missing', () {
       // flags claim a timestamp but the payload ends after the weight
-      expect(() => parseWeightMeasurement([0x02, ...u16(15000), 0xEA]),
-          throwsFormatException);
+      expect(
+        () => parseWeightMeasurement([0x02, ...u16(15000), 0xEA]),
+        throwsFormatException,
+      );
     });
   });
 
@@ -112,53 +114,64 @@ void main() {
       expect(m.isPartOfMultiplePacket, isFalse);
     });
 
-    test('full SI packet: timestamp, BMR, muscle, water, impedance, weight',
-        () {
-      final ts = DateTime(2026, 7, 7, 8, 30, 15);
-      // bits: 1 (timestamp) | 3 (BMR) | 4 (muscle %) | 5 (muscle mass)
-      //     | 8 (water mass) | 9 (impedance) | 10 (weight) = 0x073A
-      final data = [
-        ...u16(0x073A),
-        ...u16(250), // body fat 25.0 %
-        ...dateTimeBytes(ts),
-        ...u16(7000), // BMR 7000 kJ
-        ...u16(405), // muscle 40.5 %
-        ...u16(6100), // muscle mass 30.5 kg
-        ...u16(8400), // water mass 42.0 kg
-        ...u16(5023), // impedance 502.3 ohm
-        ...u16(15000), // weight 75.0 kg
-      ];
+    test(
+      'full SI packet: timestamp, BMR, muscle, water, impedance, weight',
+      () {
+        final ts = DateTime(2026, 7, 7, 8, 30, 15);
+        // bits: 1 (timestamp) | 3 (BMR) | 4 (muscle %) | 5 (muscle mass)
+        //     | 8 (water mass) | 9 (impedance) | 10 (weight) = 0x073A
+        final data = [
+          ...u16(0x073A),
+          ...u16(250), // body fat 25.0 %
+          ...dateTimeBytes(ts),
+          ...u16(7000), // BMR 7000 kJ
+          ...u16(405), // muscle 40.5 %
+          ...u16(6100), // muscle mass 30.5 kg
+          ...u16(8400), // water mass 42.0 kg
+          ...u16(5023), // impedance 502.3 ohm
+          ...u16(15000), // weight 75.0 kg
+        ];
 
-      final m = parseBodyComposition(data);
+        final m = parseBodyComposition(data);
 
-      expect(m.bodyFatPercent, closeTo(25.0, 1e-9));
-      expect(m.timestamp, ts);
-      // 7000 kJ / 4.184 = 1673.04... -> 1673 kcal
-      expect(m.basalMetabolismKcal, 1673);
-      expect(m.musclePercent, closeTo(40.5, 1e-9));
-      expect(m.muscleMassKg, closeTo(30.5, 1e-9));
-      expect(m.bodyWaterMassKg, closeTo(42.0, 1e-9));
-      expect(m.impedanceOhms, closeTo(502.3, 1e-9));
-      expect(m.weightKg, closeTo(75.0, 1e-9));
-      expect(m.fatFreeMassKg, isNull);
-      expect(m.softLeanMassKg, isNull);
-      expect(m.isPartOfMultiplePacket, isFalse);
-    });
+        expect(m.bodyFatPercent, closeTo(25.0, 1e-9));
+        expect(m.timestamp, ts);
+        // 7000 kJ / 4.184 = 1673.04... -> 1673 kcal
+        expect(m.basalMetabolismKcal, 1673);
+        expect(m.musclePercent, closeTo(40.5, 1e-9));
+        expect(m.muscleMassKg, closeTo(30.5, 1e-9));
+        expect(m.bodyWaterMassKg, closeTo(42.0, 1e-9));
+        expect(m.impedanceOhms, closeTo(502.3, 1e-9));
+        expect(m.weightKg, closeTo(75.0, 1e-9));
+        expect(m.fatFreeMassKg, isNull);
+        expect(m.softLeanMassKg, isNull);
+        expect(m.isPartOfMultiplePacket, isFalse);
+      },
+    );
 
     test('BMR kJ to kcal rounds correctly', () {
       // 6276 kJ / 4.184 = exactly 1500 kcal
-      final m = parseBodyComposition(
-          [...u16(0x0008), ...u16(250), ...u16(6276)]);
+      final m = parseBodyComposition([
+        ...u16(0x0008),
+        ...u16(250),
+        ...u16(6276),
+      ]);
       expect(m.basalMetabolismKcal, 1500);
 
       // 6278 kJ / 4.184 = 1500.478... -> 1500
-      final m2 = parseBodyComposition(
-          [...u16(0x0008), ...u16(250), ...u16(6278)]);
+      final m2 = parseBodyComposition([
+        ...u16(0x0008),
+        ...u16(250),
+        ...u16(6278),
+      ]);
       expect(m2.basalMetabolismKcal, 1500);
 
       // 6281 kJ / 4.184 = 1501.195... -> 1501
-      final m3 = parseBodyComposition(
-          [...u16(0x0008), ...u16(250), ...u16(6281)]);
+      final m3 = parseBodyComposition([
+        ...u16(0x0008),
+        ...u16(250),
+        ...u16(6281),
+      ]);
       expect(m3.basalMetabolismKcal, 1501);
     });
 
@@ -207,8 +220,12 @@ void main() {
     });
 
     test('unsuccessful body fat can still carry a weight', () {
-      final m = parseBodyComposition(
-          [...u16(0x0400), 0xFF, 0xFF, ...u16(15000)]);
+      final m = parseBodyComposition([
+        ...u16(0x0400),
+        0xFF,
+        0xFF,
+        ...u16(15000),
+      ]);
 
       expect(m.bodyFatPercent, isNull);
       expect(m.measurementUnsuccessful, isTrue);
@@ -225,37 +242,59 @@ void main() {
 
     test('throws FormatException when mandatory body fat is missing', () {
       expect(
-          () => parseBodyComposition([...u16(0x0000)]), throwsFormatException);
+        () => parseBodyComposition([...u16(0x0000)]),
+        throwsFormatException,
+      );
     });
 
     test('throws FormatException when a flagged field is truncated', () {
       // weight flagged (bit 10) but only one byte of it present
       expect(
-          () => parseBodyComposition(
-              [...u16(0x0400), ...u16(250), 0x98]),
-          throwsFormatException);
+        () => parseBodyComposition([...u16(0x0400), ...u16(250), 0x98]),
+        throwsFormatException,
+      );
     });
   });
 
   group('GATT date_time parsing', () {
     test('parses via 0x2A9D timestamp field', () {
       final ts = DateTime(1999, 12, 31, 23, 59, 59);
-      final m = parseWeightMeasurement(
-          [0x02, ...u16(15000), ...dateTimeBytes(ts)]);
+      final m = parseWeightMeasurement([
+        0x02,
+        ...u16(15000),
+        ...dateTimeBytes(ts),
+      ]);
       expect(m.timestamp, ts);
     });
 
     test('rejects out-of-range date_time fields', () {
       // month = 13 is invalid
       expect(
-          () => parseWeightMeasurement(
-              [0x02, ...u16(15000), ...u16(2026), 13, 1, 0, 0, 0]),
-          throwsFormatException);
+        () => parseWeightMeasurement([
+          0x02,
+          ...u16(15000),
+          ...u16(2026),
+          13,
+          1,
+          0,
+          0,
+          0,
+        ]),
+        throwsFormatException,
+      );
     });
 
     test('year 0 (unknown) clamps instead of throwing', () {
-      final m = parseWeightMeasurement(
-          [0x02, ...u16(15000), ...u16(0), 0, 0, 12, 0, 0]);
+      final m = parseWeightMeasurement([
+        0x02,
+        ...u16(15000),
+        ...u16(0),
+        0,
+        0,
+        12,
+        0,
+        0,
+      ]);
       expect(m.timestamp, DateTime(1970, 1, 1, 12, 0, 0));
     });
   });

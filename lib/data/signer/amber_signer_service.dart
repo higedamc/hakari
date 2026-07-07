@@ -19,14 +19,15 @@ import 'bech32.dart';
 /// - `AMBER_NOT_INSTALLED`                -> [SignerUnavailableFailure]
 /// - anything else                        -> [SignerFailure]
 class AmberSignerService implements SignerService {
-  static const MethodChannel _defaultChannel =
-      MethodChannel('org.lekt.hakari/amber');
+  static const MethodChannel _defaultChannel = MethodChannel(
+    'org.lekt.hakari/amber',
+  );
 
   final MethodChannel _channel;
 
   /// [channel] is overridable for tests; production code uses the default.
   const AmberSignerService({MethodChannel channel = _defaultChannel})
-      : _channel = channel;
+    : _channel = channel;
 
   bool get _isAndroid => !kIsWeb && Platform.isAndroid;
 
@@ -52,10 +53,9 @@ class AmberSignerService implements SignerService {
 
   @override
   Future<String> signEvent(String unsignedEventJson) async {
-    final signed = await _invoke(
-      'signEventWithAmber',
-      <String, String>{'event': unsignedEventJson},
-    );
+    final signed = await _invoke('signEventWithAmber', <String, String>{
+      'event': unsignedEventJson,
+    });
     if (signed == null || signed.isEmpty) {
       throw const SignerFailure('Amber returned no signed event');
     }
@@ -64,11 +64,13 @@ class AmberSignerService implements SignerService {
 
   @override
   Future<String> nip44Encrypt(
-      String plaintext, String recipientPubkeyHex) async {
-    final ciphertext = await _invoke(
-      'nip44EncryptWithAmber',
-      <String, String>{'plaintext': plaintext, 'pubkey': recipientPubkeyHex},
-    );
+    String plaintext,
+    String recipientPubkeyHex,
+  ) async {
+    final ciphertext = await _invoke('nip44EncryptWithAmber', <String, String>{
+      'plaintext': plaintext,
+      'pubkey': recipientPubkeyHex,
+    });
     if (ciphertext == null || ciphertext.isEmpty) {
       throw const SignerFailure('Amber returned no NIP-44 ciphertext');
     }
@@ -77,10 +79,10 @@ class AmberSignerService implements SignerService {
 
   @override
   Future<String> nip44Decrypt(String ciphertext, String senderPubkeyHex) async {
-    final plaintext = await _invoke(
-      'nip44DecryptWithAmber',
-      <String, String>{'ciphertext': ciphertext, 'pubkey': senderPubkeyHex},
-    );
+    final plaintext = await _invoke('nip44DecryptWithAmber', <String, String>{
+      'ciphertext': ciphertext,
+      'pubkey': senderPubkeyHex,
+    });
     if (plaintext == null) {
       throw const SignerFailure('Amber returned no NIP-44 plaintext');
     }
@@ -92,7 +94,8 @@ class AmberSignerService implements SignerService {
   Future<String?> _invoke(String method, [Map<String, String>? args]) async {
     if (!_isAndroid) {
       throw const SignerUnavailableFailure(
-          'Amber (NIP-55) is only available on Android');
+        'Amber (NIP-55) is only available on Android',
+      );
     }
     try {
       return await _channel.invokeMethod<String>(method, args);
@@ -101,13 +104,19 @@ class AmberSignerService implements SignerService {
         case 'AMBER_REJECTED':
         case 'AMBER_CANCELLED':
           throw SignerRejectedFailure(
-              e.message ?? 'Request rejected in Amber', e);
+            e.message ?? 'Request rejected in Amber',
+            e,
+          );
         case 'AMBER_NOT_INSTALLED':
           throw SignerUnavailableFailure(
-              e.message ?? 'Amber is not installed', e);
+            e.message ?? 'Amber is not installed',
+            e,
+          );
         default:
           throw SignerFailure(
-              e.message ?? 'Amber request failed (${e.code})', e);
+            e.message ?? 'Amber request failed (${e.code})',
+            e,
+          );
       }
     } on MissingPluginException catch (e) {
       throw SignerUnavailableFailure('Amber channel not available', e);
@@ -127,7 +136,9 @@ class AmberSignerService implements SignerService {
         throw SignerFailure('Amber returned an invalid npub: ${e.message}', e);
       }
     }
-    throw SignerFailure('Amber returned an unrecognized pubkey format: '
-        '${raw.length > 16 ? '${raw.substring(0, 16)}...' : raw}');
+    throw SignerFailure(
+      'Amber returned an unrecognized pubkey format: '
+      '${raw.length > 16 ? '${raw.substring(0, 16)}...' : raw}',
+    );
   }
 }

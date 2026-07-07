@@ -172,10 +172,11 @@ class BluePlusScaleService implements ScaleService {
 
         if (measurementChars.isEmpty) {
           throw const BleFailure(
-              'Device does not expose the standard Weight Measurement '
-              '(0x2A9D) or Body Composition Measurement (0x2A9C) '
-              'characteristics. TANITA consumer scales (TNT_...) use a '
-              'proprietary protocol that cannot be read.');
+            'Device does not expose the standard Weight Measurement '
+            '(0x2A9D) or Body Composition Measurement (0x2A9C) '
+            'characteristics. TANITA consumer scales (TNT_...) use a '
+            'proprietary protocol that cannot be read.',
+          );
         }
 
         _pending = _PendingReading();
@@ -198,7 +199,9 @@ class BluePlusScaleService implements ScaleService {
         _setState(ScaleConnectionState.error);
         if (!controller.isClosed) {
           controller.addError(
-              _translate(error, 'Connection failed'), stackTrace);
+            _translate(error, 'Connection failed'),
+            stackTrace,
+          );
           await controller.close();
         }
         await _teardownDevice();
@@ -266,11 +269,13 @@ class BluePlusScaleService implements ScaleService {
 
   DiscoveredScale? _classify(ScanResult result) {
     final adv = result.advertisementData;
-    final advertisesStandardService = adv.serviceUuids.any((uuid) =>
-        uuid == _weightScaleService || uuid == _bodyCompositionService);
+    final advertisesStandardService = adv.serviceUuids.any(
+      (uuid) => uuid == _weightScaleService || uuid == _bodyCompositionService,
+    );
 
-    final name =
-        adv.advName.isNotEmpty ? adv.advName : result.device.platformName;
+    final name = adv.advName.isNotEmpty
+        ? adv.advName
+        : result.device.platformName;
     final upperName = name.toUpperCase();
     final nameMatches = _scaleNamePrefixes.any(upperName.startsWith);
 
@@ -293,7 +298,8 @@ class BluePlusScaleService implements ScaleService {
           .timeout(const Duration(seconds: 3));
     } on TimeoutException {
       throw const BleFailure(
-          'Bluetooth adapter state could not be determined.');
+        'Bluetooth adapter state could not be determined.',
+      );
     } catch (error) {
       throw _translate(error, 'Bluetooth adapter check failed');
     }
@@ -303,15 +309,16 @@ class BluePlusScaleService implements ScaleService {
         return;
       case BluetoothAdapterState.unauthorized:
         throw const BlePermissionFailure(
-            'Bluetooth permission was denied. Grant the Bluetooth / Nearby '
-            'devices permission in system settings and try again.');
+          'Bluetooth permission was denied. Grant the Bluetooth / Nearby '
+          'devices permission in system settings and try again.',
+        );
       case BluetoothAdapterState.unavailable:
-        throw const BleFailure(
-            'Bluetooth is not available on this device.');
+        throw const BleFailure('Bluetooth is not available on this device.');
       default:
         throw BleFailure(
-            'Bluetooth is turned off (state: ${state.name}). Turn on '
-            'Bluetooth and try again.');
+          'Bluetooth is turned off (state: ${state.name}). Turn on '
+          'Bluetooth and try again.',
+        );
     }
   }
 

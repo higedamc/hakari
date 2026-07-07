@@ -30,8 +30,9 @@ class HomeScreen extends ConsumerWidget {
             tooltip: 'Publish unpublished entries to Nostr',
             onPressed: syncStatus.isSyncing
                 ? null
-                : () =>
-                    ref.read(nostrSyncProvider.notifier).publishAllUnpublished(),
+                : () => ref
+                      .read(nostrSyncProvider.notifier)
+                      .publishAllUnpublished(),
             icon: syncStatus.isSyncing
                 ? const SizedBox(
                     width: 20,
@@ -44,9 +45,7 @@ class HomeScreen extends ConsumerWidget {
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const SettingsScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
           ),
         ],

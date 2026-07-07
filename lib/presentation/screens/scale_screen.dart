@@ -72,8 +72,9 @@ class _ScaleScreenState extends ConsumerState<ScaleScreen> {
         Permission.bluetoothConnect,
       ];
       final statuses = await permissions.request();
-      final bluetoothGranted = statuses.values
-          .every((status) => status.isGranted || status.isLimited);
+      final bluetoothGranted = statuses.values.every(
+        (status) => status.isGranted || status.isLimited,
+      );
       if (!bluetoothGranted) return false;
       // Android 11 and below additionally need location for BLE scan
       // results. The manifest declares ACCESS_FINE_LOCATION with
@@ -102,26 +103,27 @@ class _ScaleScreenState extends ConsumerState<ScaleScreen> {
     _scanSub = _scaleService
         .scan(timeout: const Duration(seconds: 30))
         .listen(
-      (scale) {
-        if (!mounted) return;
-        setState(() {
-          final index =
-              _scales.indexWhere((s) => s.deviceId == scale.deviceId);
-          if (index >= 0) {
-            _scales[index] = scale;
-          } else {
-            _scales.add(scale);
-          }
-        });
-      },
-      onError: (Object error) {
-        if (!mounted) return;
-        setState(() {
-          _phase = _Phase.error;
-          _errorMessage = _messageFor(error);
-        });
-      },
-    );
+          (scale) {
+            if (!mounted) return;
+            setState(() {
+              final index = _scales.indexWhere(
+                (s) => s.deviceId == scale.deviceId,
+              );
+              if (index >= 0) {
+                _scales[index] = scale;
+              } else {
+                _scales.add(scale);
+              }
+            });
+          },
+          onError: (Object error) {
+            if (!mounted) return;
+            setState(() {
+              _phase = _Phase.error;
+              _errorMessage = _messageFor(error);
+            });
+          },
+        );
   }
 
   Future<void> _connect(DiscoveredScale scale) async {
@@ -139,16 +141,18 @@ class _ScaleScreenState extends ConsumerState<ScaleScreen> {
       _liveWeightKg = null;
     });
     _measureSub?.cancel();
-    _measureSub = _scaleService.connectAndMeasure(scale.deviceId).listen(
-      _onMeasurement,
-      onError: (Object error) {
-        if (!mounted) return;
-        setState(() {
-          _phase = _Phase.error;
-          _errorMessage = _messageFor(error);
-        });
-      },
-    );
+    _measureSub = _scaleService
+        .connectAndMeasure(scale.deviceId)
+        .listen(
+          _onMeasurement,
+          onError: (Object error) {
+            if (!mounted) return;
+            setState(() {
+              _phase = _Phase.error;
+              _errorMessage = _messageFor(error);
+            });
+          },
+        );
   }
 
   Future<void> _onMeasurement(WeightEntry entry) async {
@@ -191,24 +195,24 @@ class _ScaleScreenState extends ConsumerState<ScaleScreen> {
       appBar: AppBar(title: const Text('Bluetooth scale')),
       body: switch (_phase) {
         _Phase.permissions => const _CenteredStatus(
-            message: 'Requesting Bluetooth permissions...',
-            showProgress: true,
-          ),
+          message: 'Requesting Bluetooth permissions...',
+          showProgress: true,
+        ),
         _Phase.denied => _PermissionDenied(onRetry: _start),
         _Phase.scanning => _ScanList(
-            scales: _scales,
-            onTap: _connect,
-            onRescan: _startScan,
-          ),
+          scales: _scales,
+          onTap: _connect,
+          onRescan: _startScan,
+        ),
         _Phase.measuring => _MeasuringView(
-            scale: _connectedScale,
-            liveWeightKg: _liveWeightKg,
-            onCancel: () => Navigator.of(context).pop(),
-          ),
+          scale: _connectedScale,
+          liveWeightKg: _liveWeightKg,
+          onCancel: () => Navigator.of(context).pop(),
+        ),
         _Phase.error => _ErrorView(
-            message: _errorMessage ?? 'Something went wrong.',
-            onRetry: _start,
-          ),
+          message: _errorMessage ?? 'Something went wrong.',
+          onRetry: _start,
+        ),
       },
     );
   }
@@ -279,10 +283,7 @@ class _PermissionDenied extends StatelessWidget {
                   child: const Text('Open settings'),
                 ),
                 const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: onRetry,
-                  child: const Text('Retry'),
-                ),
+                FilledButton(onPressed: onRetry, child: const Text('Retry')),
               ],
             ),
           ],
@@ -389,10 +390,10 @@ class _CapabilityBadge extends StatelessWidget {
       child: Text(
         bodyComposition ? 'Body composition' : 'Weight only',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: bodyComposition
-                  ? scheme.onPrimaryContainer
-                  : scheme.onSurfaceVariant,
-            ),
+          color: bodyComposition
+              ? scheme.onPrimaryContainer
+              : scheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -421,9 +422,7 @@ class _MeasuringView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              scale?.name.isNotEmpty ?? false
-                  ? scale!.name
-                  : 'Connected scale',
+              scale?.name.isNotEmpty ?? false ? scale!.name : 'Connected scale',
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 32),
@@ -470,11 +469,7 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 24),
@@ -507,8 +502,7 @@ class _ConfirmMeasurementDialog extends StatelessWidget {
         'Bone ${_oneDecimal.format(entry.boneMassKg)} kg',
       if (entry.basalMetabolicRateKcal != null)
         'BMR ${entry.basalMetabolicRateKcal} kcal',
-      if (entry.metabolicAge != null)
-        'Metabolic age ${entry.metabolicAge}',
+      if (entry.metabolicAge != null) 'Metabolic age ${entry.metabolicAge}',
     ];
     return AlertDialog(
       title: const Text('Save measurement?'),

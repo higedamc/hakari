@@ -26,8 +26,7 @@ void main() {
       expect(entries, isEmpty);
     });
 
-    test('weight without body fat maps to entry with null bodyFatPercent',
-        () {
+    test('weight without body fat maps to entry with null bodyFatPercent', () {
       final entries = HealthKitConnectService.mergeSamples(
         weightSamples: [weight(t0, 72.4, uuid: 'w-1')],
         bodyFatSamples: [],
@@ -176,8 +175,10 @@ void main() {
 
     test('round-trips on both platforms', () {
       for (final isIOS in [true, false]) {
-        final raw = HealthKitConnectService.bodyFatToPlatformValue(31.7,
-            isIOS: isIOS);
+        final raw = HealthKitConnectService.bodyFatToPlatformValue(
+          31.7,
+          isIOS: isIOS,
+        );
         expect(
           HealthKitConnectService.bodyFatFromPlatformValue(raw, isIOS: isIOS),
           closeTo(31.7, 1e-9),

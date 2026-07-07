@@ -20,9 +20,7 @@ class WeightChartCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final cutoff = DateTime.now().subtract(const Duration(days: 90));
-    final points = entries
-        .where((e) => e.recordedAt.isAfter(cutoff))
-        .toList()
+    final points = entries.where((e) => e.recordedAt.isAfter(cutoff)).toList()
       ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
     final hasBodyFat = points.any((p) => p.bodyFatPercent != null);
 
@@ -47,10 +45,7 @@ class WeightChartCard extends StatelessWidget {
                   _LegendDot(color: scheme.primary, label: 'Weight (kg)'),
                   if (hasBodyFat) ...[
                     const SizedBox(width: 16),
-                    _LegendDot(
-                      color: scheme.tertiary,
-                      label: 'Body fat (%)',
-                    ),
+                    _LegendDot(color: scheme.tertiary, label: 'Body fat (%)'),
                   ],
                 ],
               ),

@@ -15,13 +15,12 @@ final DateFormat _timeFormat = DateFormat('HH:mm');
 class AddEntrySheet extends ConsumerStatefulWidget {
   const AddEntrySheet({super.key});
 
-  static Future<void> show(BuildContext context) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        builder: (_) => const AddEntrySheet(),
-      );
+  static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => const AddEntrySheet(),
+  );
 
   @override
   ConsumerState<AddEntrySheet> createState() => _AddEntrySheetState();
@@ -160,9 +159,7 @@ class _AddEntrySheetState extends ConsumerState<AddEntrySheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
         child: Form(
@@ -176,8 +173,9 @@ class _AddEntrySheetState extends ConsumerState<AddEntrySheet> {
               TextFormField(
                 controller: _weightCtrl,
                 autofocus: true,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: _validateWeight,
                 decoration: const InputDecoration(
                   labelText: 'Weight',
@@ -218,11 +216,7 @@ class _AddEntrySheetState extends ConsumerState<AddEntrySheet> {
                   const SizedBox(height: 12),
                   _fieldRow(
                     _numberField(_muscleCtrl, 'Muscle mass', suffix: 'kg'),
-                    _numberField(
-                      _visceralCtrl,
-                      'Visceral fat',
-                      integer: true,
-                    ),
+                    _numberField(_visceralCtrl, 'Visceral fat', integer: true),
                   ),
                   const SizedBox(height: 12),
                   _fieldRow(
