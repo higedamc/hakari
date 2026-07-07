@@ -70,12 +70,23 @@ class _ScaleScreenState extends ConsumerState<ScaleScreen> {
       final permissions = <Permission>[
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
-        if (defaultTargetPlatform == TargetPlatform.android)
-          Permission.locationWhenInUse,
       ];
       final statuses = await permissions.request();
-      return statuses.values
+      final bluetoothGranted = statuses.values
           .every((status) => status.isGranted || status.isLimited);
+      if (!bluetoothGranted) return false;
+      // Android 11 and below additionally need location for BLE scan
+      // results. The manifest declares ACCESS_FINE_LOCATION with
+      // maxSdkVersion=30, so on Android 12+ the OS auto-denies this
+      // request — ask best-effort but never gate scanning on it.
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          await Permission.locationWhenInUse.request();
+        } catch (_) {
+          // Ignore: scanning proceeds with the Bluetooth permissions.
+        }
+      }
+      return true;
     } catch (_) {
       return false;
     }
