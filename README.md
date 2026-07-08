@@ -56,10 +56,11 @@ official OAuth REST API): Settings → *TANITA Health Planet* → Link opens the
 in the browser; paste the resulting `code=` value back into the app, then *Import from
 Health Planet (90 days)* pulls weight, body fat %, muscle mass, visceral fat, BMR, body
 age and bone mass (innerscan tags 6021–6029, measurement-date based, deduped). Tokens are
-held in Keystore-backed secure storage. Release builds need the OAuth client secret at
-build time: `--dart-define=HP_CLIENT_SECRET=...` (the client id is baked in; note the
-measurement still reaches the cloud via the official TANITA app first — that is inherent
-to these scales).
+held in Keystore-backed secure storage. The OAuth client secret is pasted **once on the
+device** when linking (stored in the Keystore, never in the APK or the repo); a
+build-time `--dart-define=HP_CLIENT_SECRET=...` override also works for personal builds.
+Note the measurement still reaches the cloud via the official TANITA app first — that is
+inherent to these scales.
 
 ## Screenshots
 

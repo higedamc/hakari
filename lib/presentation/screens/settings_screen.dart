@@ -234,6 +234,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _linkHealthPlanet() async {
     final service = ref.read(healthPlanetServiceProvider);
+    // The OAuth client secret is pasted once and kept on-device
+    // (Keystore-backed) instead of being embedded in the APK.
+    try {
+      if (!await service.hasClientSecret()) {
+        final secret = await _showHealthPlanetSecretDialog();
+        if (secret == null || secret.trim().isEmpty) return;
+        await service.setClientSecret(secret);
+      }
+    } on Failure catch (f) {
+      showAppSnackBar(f.message);
+      return;
+    }
+    if (!mounted) return;
     try {
       await launchUrl(
         service.authorizationUrl(),
@@ -256,6 +269,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _healthPlanetBusy = false);
     }
+  }
+
+  Future<String?> _showHealthPlanetSecretDialog() {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Health Planet client secret'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Paste the client secret shown next to the client ID on '
+              'the Health Planet developer page. It is stored only on '
+              'this device (Keystore) — you enter it once.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              obscureText: true,
+              decoration: const InputDecoration(hintText: 'client secret'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
   }
 
   Future<String?> _showHealthPlanetCodeDialog() {

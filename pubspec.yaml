@@ -2,7 +2,7 @@ name: hakari
 description: "Privacy-first weight & body composition logger — TANITA BLE scales, Health Connect / HealthKit, Nostr (NIP-101h) with Amber signing and Tor/Orbot support."
 publish_to: 'none'
 
-version: 0.1.1+2
+version: 0.1.2+3
 
 environment:
   sdk: ^3.9.0
