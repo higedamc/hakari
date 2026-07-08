@@ -116,6 +116,37 @@ class HttpHealthPlanetService implements HealthPlanetService {
     return HealthPlanetCodec.parseInnerscan(body, generateId: () => _uuid.v4());
   }
 
+  @override
+  Future<List<WeightEntry>> fetchAllEntries({
+    void Function(int fetchedSoFar)? onProgress,
+  }) async {
+    // 90-day windows keep each request under the API's 3-month range
+    // limit; 50 windows ≈ 12 years stays well inside the 60 req/hour
+    // quota even with the odd retry.
+    const windowDays = 90;
+    const maxWindows = 50;
+    const stopAfterEmpty = 2;
+
+    final all = <WeightEntry>[];
+    var to = DateTime.now();
+    var consecutiveEmpty = 0;
+    for (var i = 0; i < maxWindows; i++) {
+      final from = to.subtract(const Duration(days: windowDays));
+      final chunk = await fetchEntries(from, to);
+      if (chunk.isEmpty) {
+        consecutiveEmpty++;
+        if (consecutiveEmpty >= stopAfterEmpty) break;
+      } else {
+        consecutiveEmpty = 0;
+        all.addAll(chunk);
+        onProgress?.call(all.length);
+      }
+      to = from;
+    }
+    all.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    return all;
+  }
+
   // ------------------------------------------------------------------
 
   Future<String> _fetchInnerscan(String token, DateTime from, DateTime to) {
