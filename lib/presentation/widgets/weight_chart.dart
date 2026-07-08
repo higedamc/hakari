@@ -8,21 +8,32 @@ import '../../domain/entities/weight_entry.dart';
 
 final DateFormat _axisDateFormat = DateFormat('M/d');
 
-/// Card showing the last 90 days of weight as a line chart, with a
-/// secondary body-fat line when composition data exists.
+/// Card showing the full weight history as a horizontally scrollable
+/// line chart (opens at the most recent data), with a secondary
+/// body-fat line when composition data exists.
 class WeightChartCard extends StatelessWidget {
   const WeightChartCard({super.key, required this.entries});
 
   final List<WeightEntry> entries;
 
+  /// Horizontal pixels per calendar day. 90 days ≈ one screen width.
+  static const double _pxPerDay = 4.0;
+
+  /// Backstop so a corrupt future-dated entry can't allocate an absurd
+  /// canvas (30000 px ≈ 20 years of data).
+  static const double _maxChartWidth = 30000;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final cutoff = DateTime.now().subtract(const Duration(days: 90));
-    final points = entries.where((e) => e.recordedAt.isAfter(cutoff)).toList()
+    final points = List<WeightEntry>.of(entries)
       ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
     final hasBodyFat = points.any((p) => p.bodyFatPercent != null);
+
+    final spanDays = points.length < 2
+        ? 0
+        : points.last.recordedAt.difference(points.first.recordedAt).inDays;
 
     return Card(
       child: Padding(
@@ -30,13 +41,32 @@ class WeightChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Last 90 days', style: theme.textTheme.titleMedium),
+            Text('Weight trend', style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             SizedBox(
               height: 220,
               child: points.length < 2
                   ? const _EmptyChart()
-                  : _TrendChart(points: points),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = (spanDays * _pxPerDay).clamp(
+                          constraints.maxWidth,
+                          _maxChartWidth,
+                        );
+                        if (width <= constraints.maxWidth) {
+                          return _TrendChart(points: points);
+                        }
+                        // reverse: opens scrolled to the newest entries.
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          reverse: true,
+                          child: SizedBox(
+                            width: width,
+                            child: _TrendChart(points: points),
+                          ),
+                        );
+                      },
+                    ),
             ),
             if (points.length >= 2) ...[
               const SizedBox(height: 12),
@@ -47,6 +77,14 @@ class WeightChartCard extends StatelessWidget {
                     const SizedBox(width: 16),
                     _LegendDot(color: scheme.tertiary, label: 'Body fat (%)'),
                   ],
+                  const Spacer(),
+                  if (spanDays > 100)
+                    Text(
+                      'Swipe for history',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -96,6 +134,10 @@ class _TrendChart extends StatelessWidget {
     final labelStyle = theme.textTheme.labelSmall?.copyWith(
       color: scheme.onSurfaceVariant,
     );
+    // Multi-year spans need the year to stay readable.
+    final axisFormat = (maxX - minX) > 365
+        ? DateFormat('yyyy/M')
+        : _axisDateFormat;
 
     return LineChart(
       LineChartData(
@@ -113,8 +155,10 @@ class _TrendChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           topTitles: const AxisTitles(),
-          rightTitles: const AxisTitles(),
-          leftTitles: AxisTitles(
+          // Values sit on the right so they stay visible when the chart
+          // opens scrolled to the newest data (reverse scroll).
+          leftTitles: const AxisTitles(),
+          rightTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 36,
@@ -128,14 +172,16 @@ class _TrendChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 28,
-              interval: math.max(1, (maxX - minX) / 4),
+              // ~4 labels per screen; long scrollable spans get one
+              // label every ~60 days instead of 4 in total.
+              interval: math.max(1, math.min((maxX - minX) / 4, 60)),
               getTitlesWidget: (value, meta) {
                 final date = DateTime.fromMillisecondsSinceEpoch(
                   (value * Duration.millisecondsPerDay).round(),
                 );
                 return SideTitleWidget(
                   meta: meta,
-                  child: Text(_axisDateFormat.format(date), style: labelStyle),
+                  child: Text(axisFormat.format(date), style: labelStyle),
                 );
               },
             ),
