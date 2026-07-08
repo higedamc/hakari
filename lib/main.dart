@@ -7,6 +7,7 @@ import 'core/di/switching_signer_service.dart';
 import 'data/ble/blue_plus_scale_service.dart';
 import 'data/export/file_export_service.dart';
 import 'data/health/health_kit_connect_service.dart';
+import 'data/healthplanet/http_health_planet_service.dart';
 import 'data/local/hive_encryption.dart';
 import 'data/local/hive_settings_repository.dart';
 import 'data/local/hive_weight_repository.dart';
@@ -68,6 +69,9 @@ Future<void> main() async {
         nostrServiceProvider.overrideWithValue(nostrService),
         signerServiceProvider.overrideWithValue(signerService),
         exportServiceProvider.overrideWithValue(FileExportService()),
+        healthPlanetServiceProvider.overrideWithValue(
+          HttpHealthPlanetService(),
+        ),
       ],
       child: const HakariApp(),
     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/di/providers.dart';
 import '../../domain/entities/app_settings.dart';
@@ -23,8 +24,25 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _importingHealth = false;
   bool _exporting = false;
+  bool _healthPlanetLinked = false;
+  bool _healthPlanetBusy = false;
 
   SettingsController get _settings => ref.read(settingsProvider.notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHealthPlanetStatus();
+  }
+
+  Future<void> _loadHealthPlanetStatus() async {
+    try {
+      final linked = await ref.read(healthPlanetServiceProvider).isLinked();
+      if (mounted) setState(() => _healthPlanetLinked = linked);
+    } catch (_) {
+      // Provider not wired (tests) or storage unavailable: stay unlinked.
+    }
+  }
 
   // ------------------------------------------------------------------
   // Helpers
@@ -212,6 +230,116 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   // ------------------------------------------------------------------
+  // Health Planet (TANITA cloud)
+
+  Future<void> _linkHealthPlanet() async {
+    final service = ref.read(healthPlanetServiceProvider);
+    try {
+      await launchUrl(
+        service.authorizationUrl(),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      showAppSnackBar('Could not open the browser: $e');
+      return;
+    }
+    if (!mounted) return;
+    final code = await _showHealthPlanetCodeDialog();
+    if (code == null || code.trim().isEmpty) return;
+    setState(() => _healthPlanetBusy = true);
+    try {
+      await service.linkWithCode(code);
+      if (mounted) setState(() => _healthPlanetLinked = true);
+      showAppSnackBar('Health Planet linked.');
+    } on Failure catch (f) {
+      showAppSnackBar(f.message);
+    } finally {
+      if (mounted) setState(() => _healthPlanetBusy = false);
+    }
+  }
+
+  Future<String?> _showHealthPlanetCodeDialog() {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Paste authorization code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'After you approve access, the browser lands on a page '
+              'whose address contains "code=...". Copy that value (or '
+              'the whole URL) and paste it here within 10 minutes.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'code or full URL'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Link'),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
+  }
+
+  Future<void> _importFromHealthPlanet() async {
+    setState(() => _healthPlanetBusy = true);
+    try {
+      final now = DateTime.now();
+      final fetched = await ref
+          .read(healthPlanetServiceProvider)
+          .fetchEntries(now.subtract(const Duration(days: 90)), now);
+      final repo = ref.read(weightRepositoryProvider);
+      final existing = List<WeightEntry>.of(await repo.getAll());
+      var imported = 0;
+      for (final entry in fetched) {
+        final isDuplicate = existing.any(
+          (e) =>
+              e.recordedAt.difference(entry.recordedAt).abs() <=
+              const Duration(seconds: 60),
+        );
+        if (isDuplicate) continue;
+        await repo.upsert(entry);
+        existing.add(entry);
+        imported++;
+      }
+      showAppSnackBar(
+        imported == 0
+            ? 'No new entries to import.'
+            : 'Imported $imported ${imported == 1 ? 'entry' : 'entries'} '
+                  'from Health Planet.',
+      );
+    } on Failure catch (f) {
+      showAppSnackBar(f.message);
+    } finally {
+      if (mounted) setState(() => _healthPlanetBusy = false);
+    }
+  }
+
+  Future<void> _unlinkHealthPlanet() async {
+    try {
+      await ref.read(healthPlanetServiceProvider).unlink();
+      if (mounted) setState(() => _healthPlanetLinked = false);
+      showAppSnackBar('Health Planet unlinked.');
+    } on Failure catch (f) {
+      showAppSnackBar(f.message);
+    }
+  }
+
+  // ------------------------------------------------------------------
   // Export
 
   Future<void> _export({required bool asCsv}) async {
@@ -263,6 +391,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ..._torSection(settings),
             ..._publishingSection(settings),
             ..._healthSection(settings),
+            ..._healthPlanetSection(),
             ..._exportSection(),
           ],
         ),
@@ -433,6 +562,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             : null,
         onTap: _importingHealth ? null : _importFromHealth,
       ),
+    ];
+  }
+
+  List<Widget> _healthPlanetSection() {
+    final busyIndicator = _healthPlanetBusy
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : null;
+    return [
+      const SectionHeader('TANITA Health Planet'),
+      if (!_healthPlanetLinked)
+        ListTile(
+          leading: const Icon(Icons.link),
+          title: const Text('Link Health Planet'),
+          subtitle: const Text(
+            'Import TANITA scale measurements via the official cloud API',
+          ),
+          trailing: busyIndicator,
+          onTap: _healthPlanetBusy ? null : _linkHealthPlanet,
+        )
+      else ...[
+        ListTile(
+          leading: const Icon(Icons.download_outlined),
+          title: const Text('Import from Health Planet (90 days)'),
+          subtitle: const Text('Skips entries you already have'),
+          trailing: busyIndicator,
+          onTap: _healthPlanetBusy ? null : _importFromHealthPlanet,
+        ),
+        ListTile(
+          leading: const Icon(Icons.link_off),
+          title: const Text('Unlink Health Planet'),
+          onTap: _healthPlanetBusy ? null : _unlinkHealthPlanet,
+        ),
+      ],
     ];
   }
 

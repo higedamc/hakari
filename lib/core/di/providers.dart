@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../../domain/repositories/weight_repository.dart';
 import '../../domain/services/export_service.dart';
+import '../../domain/services/health_planet_service.dart';
 import '../../domain/services/health_service.dart';
 import '../../domain/services/nostr_service.dart';
 import '../../domain/services/scale_service.dart';
@@ -35,5 +36,9 @@ final signerServiceProvider = Provider<SignerService>(
 );
 
 final exportServiceProvider = Provider<ExportService>(
+  (ref) => throw UnimplementedError('override in main'),
+);
+
+final healthPlanetServiceProvider = Provider<HealthPlanetService>(
   (ref) => throw UnimplementedError('override in main'),
 );
