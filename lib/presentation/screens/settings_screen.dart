@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -23,6 +25,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _importingHealth = false;
+  bool _checkingWellness = false;
   bool _exporting = false;
   bool _healthPlanetLinked = false;
   bool _healthPlanetBusy = false;
@@ -175,13 +178,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ------------------------------------------------------------------
   // Health
 
+  /// Android reads/writes Google Health Connect; iOS uses Apple
+  /// HealthKit ("Health"). They are different APIs behind one seam.
+  static final String _healthStoreName = Platform.isIOS
+      ? 'Health'
+      : 'Health Connect';
+
   Future<void> _connectHealth() async {
     try {
       final health = ref.read(healthServiceProvider);
       if (!await health.isAvailable()) {
-        showAppSnackBar(
-          'Health Connect / Health is not available on this device.',
-        );
+        showAppSnackBar('$_healthStoreName is not available on this device.');
         return;
       }
       final granted = await health.requestPermissions();
@@ -227,6 +234,72 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _importingHealth = false);
     }
+  }
+
+  /// Diagnoses why the readiness card may be missing: permission state,
+  /// and how many of the last 8 days actually have sleep / energy data.
+  Future<void> _checkWellnessData() async {
+    setState(() => _checkingWellness = true);
+    String message;
+    try {
+      final health = ref.read(healthServiceProvider);
+      if (!await health.isAvailable()) {
+        message = '$_healthStoreName is not available on this device.';
+      } else {
+        final days = await health.readWellness(8);
+        final sleepDays = days.where((d) => d.sleepHours != null).length;
+        final energyDays = days.where((d) => d.activeEnergyKcal != null).length;
+        final buffer = StringBuffer(
+          'Last 8 days in $_healthStoreName:\n'
+          '• Sleep: $sleepDays ${sleepDays == 1 ? 'day' : 'days'} with data\n'
+          '• Active energy: $energyDays '
+          '${energyDays == 1 ? 'day' : 'days'} with data\n\n',
+        );
+        if (sleepDays == 0) {
+          buffer.write(
+            'No sleep records found, so the readiness card stays '
+            'hidden. Hakari only reads what other apps write into '
+            '$_healthStoreName — two things to check:\n\n'
+            '1. Permissions: tap "Connect $_healthStoreName" and make '
+            'sure Sleep and Active energy are allowed (also visible in '
+            'the $_healthStoreName app under App permissions → Hakari).\n'
+            '2. A sleep source: your watch\'s companion app must sync '
+            'sleep into $_healthStoreName (check its settings for a '
+            '"$_healthStoreName" toggle; the $_healthStoreName app → '
+            'Data and access → Sleep shows which apps write it). '
+            'Fitbit, Pixel Watch, Samsung Health and Sleep as Android '
+            'do; many vendor apps do not.',
+          );
+        } else {
+          buffer.write(
+            'Data is flowing — the readiness card should appear on the '
+            'home screen (pull to refresh or reopen the app).',
+          );
+        }
+        message = buffer.toString();
+      }
+    } on Failure catch (f) {
+      message =
+          'Reading wellness data failed: ${f.message}\n\n'
+          'Tap "Connect $_healthStoreName" to (re)grant the sleep and '
+          'active-energy permissions.';
+    } finally {
+      if (mounted) setState(() => _checkingWellness = false);
+    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Wellness data check'),
+        content: SingleChildScrollView(child: Text(message)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ------------------------------------------------------------------
@@ -617,16 +690,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   List<Widget> _healthSection(AppSettings settings) {
     return [
-      const SectionHeader('Health'),
+      SectionHeader(_healthStoreName),
       ListTile(
         leading: const Icon(Icons.favorite_outline),
-        title: const Text('Connect Health Connect / Health'),
-        subtitle: const Text('Request read & write permissions'),
+        title: Text('Connect $_healthStoreName'),
+        subtitle: const Text(
+          'Weight & body fat (read/write), sleep & active energy '
+          '(read-only)',
+        ),
         onTap: _connectHealth,
       ),
       ListTile(
         leading: const Icon(Icons.download_outlined),
-        title: const Text('Import from Health (90 days)'),
+        title: Text('Import from $_healthStoreName (90 days)'),
         subtitle: const Text('Skips entries you already have'),
         trailing: _importingHealth
             ? const SizedBox(
@@ -636,6 +712,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               )
             : null,
         onTap: _importingHealth ? null : _importFromHealth,
+      ),
+      ListTile(
+        leading: const Icon(Icons.monitor_heart_outlined),
+        title: const Text('Check wellness data'),
+        subtitle: const Text(
+          'See whether sleep & energy reach the readiness card',
+        ),
+        trailing: _checkingWellness
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : null,
+        onTap: _checkingWellness ? null : _checkWellnessData,
       ),
     ];
   }
