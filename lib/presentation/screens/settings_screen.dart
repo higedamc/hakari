@@ -234,14 +234,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _linkHealthPlanet() async {
     final service = ref.read(healthPlanetServiceProvider);
-    // The OAuth client secret is pasted once and kept on-device
-    // (Keystore-backed) instead of being embedded in the APK.
+    // Straight to the consent page — the client secret is only needed at
+    // token-exchange time, so it is asked for in the same dialog as the
+    // code (first link only) and kept on-device (Keystore-backed).
+    bool needSecret;
     try {
-      if (!await service.hasClientSecret()) {
-        final secret = await _showHealthPlanetSecretDialog();
-        if (secret == null || secret.trim().isEmpty) return;
-        await service.setClientSecret(secret);
-      }
+      needSecret = !await service.hasClientSecret();
     } on Failure catch (f) {
       showAppSnackBar(f.message);
       return;
@@ -257,11 +255,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return;
     }
     if (!mounted) return;
-    final code = await _showHealthPlanetCodeDialog();
-    if (code == null || code.trim().isEmpty) return;
+    final result = await _showHealthPlanetLinkDialog(askSecret: needSecret);
+    if (result == null || result.code.trim().isEmpty) return;
     setState(() => _healthPlanetBusy = true);
     try {
-      await service.linkWithCode(code);
+      final secret = result.secret;
+      if (secret != null && secret.trim().isNotEmpty) {
+        await service.setClientSecret(secret);
+      }
+      await service.linkWithCode(result.code);
       if (mounted) setState(() => _healthPlanetLinked = true);
       showAppSnackBar('Health Planet linked.');
     } on Failure catch (f) {
@@ -271,67 +273,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<String?> _showHealthPlanetSecretDialog() {
-    final controller = TextEditingController();
-    return showDialog<String>(
+  Future<({String? secret, String code})?> _showHealthPlanetLinkDialog({
+    required bool askSecret,
+  }) {
+    final secretCtrl = TextEditingController();
+    final codeCtrl = TextEditingController();
+    return showDialog<({String? secret, String code})>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Health Planet client secret'),
+        title: const Text('Link Health Planet'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Paste the client secret shown next to the client ID on '
-              'the Health Planet developer page. It is stored only on '
-              'this device (Keystore) — you enter it once.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              obscureText: true,
-              decoration: const InputDecoration(hintText: 'client secret'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    ).whenComplete(controller.dispose);
-  }
-
-  Future<String?> _showHealthPlanetCodeDialog() {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Paste authorization code'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'After you approve access, Health Planet shows an '
-              'authorization code on the page. Copy it and paste it '
+              'Approve access in the browser; Health Planet then shows '
+              'an authorization code on the page. Copy it and paste it '
               'here within 10 minutes.',
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: controller,
+              controller: codeCtrl,
               autofocus: true,
               decoration: const InputDecoration(
-                hintText: 'authorization code',
+                labelText: 'Authorization code',
               ),
             ),
+            if (askSecret) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: secretCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Client secret (first link only)',
+                  helperText:
+                      'From the Health Planet developer page. '
+                      'Stored only on this device.',
+                  helperMaxLines: 2,
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -340,12 +321,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            onPressed: () => Navigator.of(dialogContext).pop((
+              secret: askSecret ? secretCtrl.text : null,
+              code: codeCtrl.text,
+            )),
             child: const Text('Link'),
           ),
         ],
       ),
-    ).whenComplete(controller.dispose);
+    ).whenComplete(() {
+      secretCtrl.dispose();
+      codeCtrl.dispose();
+    });
   }
 
   Future<void> _importFromHealthPlanet() async {
