@@ -34,4 +34,12 @@ abstract class HealthPlanetService {
   /// Fetches innerscan measurements in `[from, to]` (measurement dates,
   /// max 3 months per Health Planet request) mapped to [WeightEntry].
   Future<List<WeightEntry>> fetchEntries(DateTime from, DateTime to);
+
+  /// Fetches the entire innerscan history by paging 90-day windows
+  /// backwards from now. Stops after two consecutive empty windows (or a
+  /// hard cap of ~12 years) so it terminates on any realistic account.
+  /// [onProgress] reports the running entry count per fetched window.
+  Future<List<WeightEntry>> fetchAllEntries({
+    void Function(int fetchedSoFar)? onProgress,
+  });
 }

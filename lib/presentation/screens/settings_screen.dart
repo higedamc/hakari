@@ -335,13 +335,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
-  Future<void> _importFromHealthPlanet() async {
+  Future<void> _importFromHealthPlanet({required bool fullHistory}) async {
     setState(() => _healthPlanetBusy = true);
     try {
+      final service = ref.read(healthPlanetServiceProvider);
       final now = DateTime.now();
-      final fetched = await ref
-          .read(healthPlanetServiceProvider)
-          .fetchEntries(now.subtract(const Duration(days: 90)), now);
+      final fetched = fullHistory
+          ? await service.fetchAllEntries()
+          : await service.fetchEntries(
+              now.subtract(const Duration(days: 90)),
+              now,
+            );
       final repo = ref.read(weightRepositoryProvider);
       final existing = List<WeightEntry>.of(await repo.getAll());
       var imported = 0;
@@ -662,7 +666,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: const Text('Import from Health Planet (90 days)'),
           subtitle: const Text('Skips entries you already have'),
           trailing: busyIndicator,
-          onTap: _healthPlanetBusy ? null : _importFromHealthPlanet,
+          onTap: _healthPlanetBusy
+              ? null
+              : () => _importFromHealthPlanet(fullHistory: false),
+        ),
+        ListTile(
+          leading: const Icon(Icons.history),
+          title: const Text('Import full history'),
+          subtitle: const Text(
+            'Pages back through your entire Health Planet record',
+          ),
+          trailing: busyIndicator,
+          onTap: _healthPlanetBusy
+              ? null
+              : () => _importFromHealthPlanet(fullHistory: true),
         ),
         ListTile(
           leading: const Icon(Icons.link_off),
