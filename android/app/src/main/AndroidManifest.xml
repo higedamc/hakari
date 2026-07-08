@@ -20,6 +20,9 @@
     <uses-permission android:name="android.permission.health.WRITE_WEIGHT"/>
     <uses-permission android:name="android.permission.health.READ_BODY_FAT"/>
     <uses-permission android:name="android.permission.health.WRITE_BODY_FAT"/>
+    <!-- Read-only, for the workout-readiness card (sleep + active energy). -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP"/>
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
 
     <!-- allowBackup=false: Hive boxes hold health data (and a signing key
          in local-key mode) in plaintext; Android auto-backup would upload

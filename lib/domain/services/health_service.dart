@@ -1,3 +1,4 @@
+import '../entities/daily_wellness.dart';
 import '../entities/weight_entry.dart';
 
 /// Health Connect (Android) / HealthKit (iOS) integration.
@@ -16,4 +17,10 @@ abstract interface class HealthService {
   /// Read weight records between [from] and [to] as entries
   /// (source = healthSync). Used for import.
   Future<List<WeightEntry>> readEntries(DateTime from, DateTime to);
+
+  /// Sleep + active energy for the [days] calendar days ending today
+  /// (oldest first, one element per day; missing data yields nulls).
+  /// Requires the sleep / active-energy read permissions from
+  /// [requestPermissions].
+  Future<List<DailyWellness>> readWellness(int days);
 }
