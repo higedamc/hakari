@@ -23,6 +23,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
   static const String _host = 'www.healthplanet.jp';
   static const String _accessTokenKey = 'hp_access_token';
   static const String _refreshTokenKey = 'hp_refresh_token';
+  static const String _clientSecretKey = 'hp_client_secret';
   static const Duration _timeout = Duration(seconds: 20);
 
   final FlutterSecureStorage _storage;
@@ -37,15 +38,47 @@ class HttpHealthPlanetService implements HealthPlanetService {
   });
 
   @override
+  Future<bool> hasClientSecret() async => (await _clientSecret()).isNotEmpty;
+
+  @override
+  Future<void> setClientSecret(String secret) async {
+    final trimmed = secret.trim();
+    if (trimmed.isEmpty) {
+      throw const HealthPlanetFailure('The client secret is empty.');
+    }
+    await _storage.write(key: _clientSecretKey, value: trimmed);
+  }
+
+  /// Build-time secret wins; otherwise the one pasted on this device.
+  Future<String> _clientSecret() async {
+    if (HealthPlanetConfig.clientSecret.isNotEmpty) {
+      return HealthPlanetConfig.clientSecret;
+    }
+    return (await _storage.read(key: _clientSecretKey)) ?? '';
+  }
+
+  Future<String> _requireClientSecret() async {
+    final secret = await _clientSecret();
+    if (secret.isEmpty) {
+      throw const HealthPlanetFailure(
+        'No Health Planet client secret is set. Enter it when linking '
+        '(shown next to the client ID on the Health Planet developer '
+        'page).',
+      );
+    }
+    return secret;
+  }
+
+  @override
   Future<void> linkWithCode(String code) async {
-    _requireConfigured();
+    final secret = await _requireClientSecret();
     final trimmed = _extractCode(code);
     if (trimmed.isEmpty) {
       throw const HealthPlanetFailure('The authorization code is empty.');
     }
     final body = await _postForm('/oauth/token', {
       'client_id': HealthPlanetConfig.clientId,
-      'client_secret': HealthPlanetConfig.clientSecret,
+      'client_secret': secret,
       'redirect_uri': HealthPlanetConfig.redirectUri,
       'code': trimmed,
       'grant_type': 'authorization_code',
@@ -97,7 +130,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
   }
 
   Future<String> _refreshAccessToken() async {
-    _requireConfigured();
+    final secret = await _requireClientSecret();
     final refresh = await _storage.read(key: _refreshTokenKey);
     if (refresh == null || refresh.isEmpty) {
       throw const HealthPlanetFailure(
@@ -106,7 +139,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
     }
     final body = await _postForm('/oauth/token', {
       'client_id': HealthPlanetConfig.clientId,
-      'client_secret': HealthPlanetConfig.clientSecret,
+      'client_secret': secret,
       'redirect_uri': HealthPlanetConfig.redirectUri,
       'refresh_token': refresh,
       'grant_type': 'refresh_token',
@@ -171,15 +204,6 @@ class HttpHealthPlanetService implements HealthPlanetService {
     if (body.length > 512) return false;
     return body.contains('"error"') &&
         (body.contains('token') || body.contains('unauthorized'));
-  }
-
-  void _requireConfigured() {
-    if (!HealthPlanetConfig.isConfigured) {
-      throw const HealthPlanetFailure(
-        'This build has no Health Planet client secret '
-        '(HP_CLIENT_SECRET). Rebuild with --dart-define.',
-      );
-    }
   }
 
   /// Accepts either the bare code or a pasted success-page URL containing

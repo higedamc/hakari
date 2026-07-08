@@ -16,6 +16,14 @@ abstract class HealthPlanetService {
   /// and persists them securely.
   Future<void> linkWithCode(String code);
 
+  /// Whether an OAuth client secret is available (baked into the build
+  /// or previously stored on this device).
+  Future<bool> hasClientSecret();
+
+  /// Stores the OAuth client secret on-device (Keystore-backed). Lets
+  /// the user paste it once instead of embedding it in the APK.
+  Future<void> setClientSecret(String secret);
+
   /// Whether tokens are stored (does not guarantee they are still valid;
   /// [fetchEntries] refreshes or fails with [HealthPlanetFailure]).
   Future<bool> isLinked();
