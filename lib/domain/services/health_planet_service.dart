@@ -8,8 +8,8 @@ import '../entities/weight_entry.dart';
 /// compatibility".
 abstract class HealthPlanetService {
   /// Where the user grants access (opened in an external browser). After
-  /// approval Health Planet redirects to its success page with
-  /// `?code=...` which the user pastes back into the app.
+  /// approval Health Planet's success page displays an authorization
+  /// code which the user pastes back into the app.
   Uri authorizationUrl();
 
   /// Exchanges a pasted authorization code (valid 10 minutes) for tokens
