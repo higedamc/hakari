@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:health/health.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/entities/daily_wellness.dart';
 import '../../domain/entities/weight_entry.dart';
 import '../../domain/failures/failures.dart';
 import '../../domain/services/health_service.dart';
@@ -19,6 +20,14 @@ class HealthSample {
     required this.timestamp,
     required this.value,
   });
+}
+
+/// One recorded sleep interval (session or asleep segment).
+class SleepSpan {
+  final DateTime start;
+  final DateTime end;
+
+  const SleepSpan({required this.start, required this.end});
 }
 
 /// [HealthService] backed by the `health` plugin — Google Health Connect
@@ -44,6 +53,13 @@ class HealthKitConnectService implements HealthService {
   static const List<HealthDataAccess> _permissions = [
     HealthDataAccess.READ_WRITE,
     HealthDataAccess.READ_WRITE,
+  ];
+
+  /// Read-only types backing the readiness card. Sleep sessions exist on
+  /// Health Connect; HealthKit reports asleep segments instead.
+  static List<HealthDataType> get _wellnessTypes => [
+    Platform.isIOS ? HealthDataType.SLEEP_ASLEEP : HealthDataType.SLEEP_SESSION,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
   ];
 
   bool get _isSupportedPlatform => Platform.isAndroid || Platform.isIOS;
@@ -81,14 +97,19 @@ class HealthKitConnectService implements HealthService {
       await _ensureConfigured();
       // requestAuthorization may block when permissions are already
       // granted, so check first (may return null on iOS for READ).
+      final allTypes = [..._types, ..._wellnessTypes];
+      final allAccess = [
+        ..._permissions,
+        ..._wellnessTypes.map((_) => HealthDataAccess.READ),
+      ];
       final has = await _health.hasPermissions(
-        _types,
-        permissions: _permissions,
+        allTypes,
+        permissions: allAccess,
       );
       if (has == true) return true;
       return await _health.requestAuthorization(
-        _types,
-        permissions: _permissions,
+        allTypes,
+        permissions: allAccess,
       );
     } on HealthFailure {
       rethrow;
@@ -184,10 +205,115 @@ class HealthKitConnectService implements HealthService {
     }
   }
 
+  @override
+  Future<List<DailyWellness>> readWellness(int days) async {
+    try {
+      await _ensureConfigured();
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final points = await _health.getHealthDataFromTypes(
+        types: _wellnessTypes,
+        // Extra half-day so a night starting before the window's first
+        // midnight still counts toward its morning.
+        startTime: todayStart.subtract(Duration(days: days - 1, hours: 12)),
+        endTime: now,
+      );
+
+      final sleep = <SleepSpan>[];
+      final energy = <HealthSample>[];
+      for (final point in points) {
+        switch (point.type) {
+          case HealthDataType.SLEEP_SESSION:
+          case HealthDataType.SLEEP_ASLEEP:
+            sleep.add(SleepSpan(start: point.dateFrom, end: point.dateTo));
+          case HealthDataType.ACTIVE_ENERGY_BURNED:
+            final value = point.value;
+            if (value is NumericHealthValue) {
+              energy.add(
+                HealthSample(
+                  uuid: point.uuid,
+                  timestamp: point.dateFrom,
+                  value: value.numericValue.toDouble(),
+                ),
+              );
+            }
+          default:
+            break;
+        }
+      }
+      return buildDailyWellness(
+        sleep: sleep,
+        energy: energy,
+        today: todayStart,
+        days: days,
+      );
+    } on HealthFailure {
+      rethrow;
+    } catch (e) {
+      throw HealthFailure('Failed to read wellness data', e);
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Pure mapping logic (unit-tested in
   // test/data/health_service_mapping_test.dart).
   // ---------------------------------------------------------------------
+
+  /// Buckets sleep spans and energy samples into calendar days.
+  ///
+  /// A sleep span counts toward the day its END falls on (a night ending
+  /// 06:40 on the 8th is "last night" for the 8th). Overlapping records
+  /// with identical bounds (session + stages duplicates) are collapsed.
+  static List<DailyWellness> buildDailyWellness({
+    required List<SleepSpan> sleep,
+    required List<HealthSample> energy,
+    required DateTime today,
+    required int days,
+  }) {
+    final seen = <String>{};
+    final uniqueSleep = sleep
+        .where((s) => s.end.isAfter(s.start))
+        .where(
+          (s) => seen.add(
+            '${s.start.toIso8601String()}'
+            '/${s.end.toIso8601String()}',
+          ),
+        )
+        .toList();
+
+    final result = <DailyWellness>[];
+    for (var i = days - 1; i >= 0; i--) {
+      final dayStart = DateTime(today.year, today.month, today.day - i);
+      final dayEnd = DateTime(today.year, today.month, today.day - i + 1);
+
+      double? sleepHours;
+      for (final span in uniqueSleep) {
+        final endsToday =
+            !span.end.isBefore(dayStart) && span.end.isBefore(dayEnd);
+        if (!endsToday) continue;
+        sleepHours =
+            (sleepHours ?? 0) + span.end.difference(span.start).inMinutes / 60;
+      }
+
+      double? energyKcal;
+      for (final sample in energy) {
+        final inDay =
+            !sample.timestamp.isBefore(dayStart) &&
+            sample.timestamp.isBefore(dayEnd);
+        if (!inDay) continue;
+        energyKcal = (energyKcal ?? 0) + sample.value;
+      }
+
+      result.add(
+        DailyWellness(
+          day: dayStart,
+          sleepHours: sleepHours,
+          activeEnergyKcal: energyKcal,
+        ),
+      );
+    }
+    return result;
+  }
 
   /// Converts a human body fat percentage (e.g. `23.5`) to the value the
   /// `health` plugin expects: HealthKit's `HKUnit.percent()` is a 0–1

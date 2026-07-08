@@ -9,6 +9,7 @@ import '../providers/nostr_sync_provider.dart';
 import '../widgets/app_messenger.dart';
 import '../widgets/entry_tile.dart';
 import '../widgets/weight_chart.dart';
+import '../widgets/wellness_card.dart';
 import 'add_entry_sheet.dart';
 import 'scale_screen.dart';
 import 'settings_screen.dart';
@@ -66,6 +67,7 @@ class HomeScreen extends ConsumerWidget {
         data: (entries) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
           children: [
+            const WellnessCard(),
             WeightChartCard(entries: entries),
             const SizedBox(height: 16),
             if (entries.isEmpty)
