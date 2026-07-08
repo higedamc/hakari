@@ -58,3 +58,8 @@ class SignerRejectedFailure extends SignerFailure {
 class ExportFailure extends Failure {
   const ExportFailure(super.message, [super.cause]);
 }
+
+/// Health Planet (TANITA cloud API) errors: OAuth, network, quota.
+class HealthPlanetFailure extends Failure {
+  const HealthPlanetFailure(super.message, [super.cause]);
+}

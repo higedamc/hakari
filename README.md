@@ -51,10 +51,15 @@ What happens with a real TANITA scale:
    ("TANITA consumer scales use a proprietary protocol that cannot be read") instead of
    hanging or failing silently.
 
-If first-class TANITA integration is ever needed, the correct route is the **Health Planet
-cloud API** (TANITA's official OAuth REST API) — sync measurements from the cloud rather
-than reverse-engineering the BLE link. It can be added as an optional service behind the
-existing `ScaleService` / `HealthService` seams.
+For first-class TANITA data, Hakari integrates the **Health Planet cloud API** (TANITA's
+official OAuth REST API): Settings → *TANITA Health Planet* → Link opens the consent page
+in the browser; paste the resulting `code=` value back into the app, then *Import from
+Health Planet (90 days)* pulls weight, body fat %, muscle mass, visceral fat, BMR, body
+age and bone mass (innerscan tags 6021–6029, measurement-date based, deduped). Tokens are
+held in Keystore-backed secure storage. Release builds need the OAuth client secret at
+build time: `--dart-define=HP_CLIENT_SECRET=...` (the client id is baked in; note the
+measurement still reaches the cloud via the official TANITA app first — that is inherent
+to these scales).
 
 ## Screenshots
 
