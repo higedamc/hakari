@@ -345,23 +345,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final repo = ref.read(weightRepositoryProvider);
       final existing = List<WeightEntry>.of(await repo.getAll());
       var imported = 0;
+      var updated = 0;
       for (final entry in fetched) {
-        final isDuplicate = existing.any(
+        final matchIndex = existing.indexWhere(
           (e) =>
               e.recordedAt.difference(entry.recordedAt).abs() <=
               const Duration(seconds: 60),
         );
-        if (isDuplicate) continue;
-        await repo.upsert(entry);
-        existing.add(entry);
-        imported++;
+        if (matchIndex == -1) {
+          await repo.upsert(entry);
+          existing.add(entry);
+          imported++;
+          continue;
+        }
+        // Duplicate timestamp: backfill metrics the stored entry lacks
+        // (e.g. entries imported before muscle score / visceral level 2
+        // were captured) without touching values already present.
+        final current = existing[matchIndex];
+        final merged = current.copyWith(
+          bodyFatPercent: current.bodyFatPercent ?? entry.bodyFatPercent,
+          bodyWaterPercent: current.bodyWaterPercent ?? entry.bodyWaterPercent,
+          muscleMassKg: current.muscleMassKg ?? entry.muscleMassKg,
+          muscleScore: current.muscleScore ?? entry.muscleScore,
+          visceralFatRating:
+              current.visceralFatRating ?? entry.visceralFatRating,
+          visceralFatLevel2:
+              current.visceralFatLevel2 ?? entry.visceralFatLevel2,
+          boneMassKg: current.boneMassKg ?? entry.boneMassKg,
+          basalMetabolicRateKcal:
+              current.basalMetabolicRateKcal ?? entry.basalMetabolicRateKcal,
+          metabolicAge: current.metabolicAge ?? entry.metabolicAge,
+        );
+        final gainedData =
+            merged.toMap().toString() != current.toMap().toString();
+        if (!gainedData) continue;
+        await repo.upsert(merged);
+        existing[matchIndex] = merged;
+        updated++;
       }
-      showAppSnackBar(
-        imported == 0
-            ? 'No new entries to import.'
-            : 'Imported $imported ${imported == 1 ? 'entry' : 'entries'} '
-                  'from Health Planet.',
-      );
+      showAppSnackBar(switch ((imported, updated)) {
+        (0, 0) => 'No new entries to import.',
+        (final i, 0) =>
+          'Imported $i ${i == 1 ? 'entry' : 'entries'} from Health Planet.',
+        (0, final u) =>
+          'Updated $u existing ${u == 1 ? 'entry' : 'entries'} with new '
+              'metrics.',
+        (final i, final u) =>
+          'Imported $i new, updated $u existing entries from Health Planet.',
+      });
     } on Failure catch (f) {
       showAppSnackBar(f.message);
     } finally {
