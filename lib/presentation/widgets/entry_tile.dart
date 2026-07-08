@@ -117,8 +117,17 @@ class EntryTile extends StatelessWidget {
     if (water != null) chips.add('${_oneDecimal.format(water)}% water');
     final muscle = entry.muscleMassKg;
     if (muscle != null) chips.add('${_oneDecimal.format(muscle)} kg muscle');
+    final muscleScore = entry.muscleScore;
+    if (muscleScore != null) chips.add('Muscle score $muscleScore');
+    // Prefer the one-decimal visceral level when present; the integer
+    // rating is the same metric, coarser.
+    final visceral2 = entry.visceralFatLevel2;
     final visceral = entry.visceralFatRating;
-    if (visceral != null) chips.add('Visceral $visceral');
+    if (visceral2 != null) {
+      chips.add('Visceral ${_oneDecimal.format(visceral2)}');
+    } else if (visceral != null) {
+      chips.add('Visceral $visceral');
+    }
     final bone = entry.boneMassKg;
     if (bone != null) chips.add('${_oneDecimal.format(bone)} kg bone');
     final bmr = entry.basalMetabolicRateKcal;

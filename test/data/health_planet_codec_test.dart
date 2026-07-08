@@ -42,6 +42,8 @@ void main() {
         {"date":"202607070900","keydata":"71.90","model":"01000144","tag":"6021"},
         {"date":"202607070900","keydata":"18.40","model":"01000144","tag":"6022"},
         {"date":"202607070900","keydata":"30.10","model":"01000144","tag":"6023"},
+        {"date":"202607070900","keydata":"2","model":"01000144","tag":"6024"},
+        {"date":"202607070900","keydata":"7.5","model":"01000144","tag":"6025"},
         {"date":"202607070900","keydata":"7","model":"01000144","tag":"6026"},
         {"date":"202607070900","keydata":"1560","model":"01000144","tag":"6027"},
         {"date":"202607070900","keydata":"28","model":"01000144","tag":"6028"},
@@ -61,7 +63,9 @@ void main() {
       expect(full.weightKg, 71.9);
       expect(full.bodyFatPercent, 18.4);
       expect(full.muscleMassKg, 30.1);
+      expect(full.muscleScore, 2);
       expect(full.visceralFatRating, 7);
+      expect(full.visceralFatLevel2, 7.5);
       expect(full.basalMetabolicRateKcal, 1560);
       expect(full.metabolicAge, 28);
       expect(full.boneMassKg, 2.9);

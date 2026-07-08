@@ -16,7 +16,8 @@ import '../../domain/services/export_service.dart';
 class FileExportService implements ExportService {
   static const String csvHeader =
       'recorded_at,weight_kg,body_fat_percent,'
-      'body_water_percent,muscle_mass_kg,visceral_fat_rating,bone_mass_kg,'
+      'body_water_percent,muscle_mass_kg,muscle_score,visceral_fat_rating,'
+      'visceral_fat_level2,bone_mass_kg,'
       'basal_metabolic_rate_kcal,metabolic_age,source';
 
   /// Builds the full CSV document (header + one row per entry).
@@ -39,7 +40,9 @@ class FileExportService implements ExportService {
       entry.bodyFatPercent?.toString() ?? '',
       entry.bodyWaterPercent?.toString() ?? '',
       entry.muscleMassKg?.toString() ?? '',
+      entry.muscleScore?.toString() ?? '',
       entry.visceralFatRating?.toString() ?? '',
+      entry.visceralFatLevel2?.toString() ?? '',
       entry.boneMassKg?.toString() ?? '',
       entry.basalMetabolicRateKcal?.toString() ?? '',
       entry.metabolicAge?.toString() ?? '',
