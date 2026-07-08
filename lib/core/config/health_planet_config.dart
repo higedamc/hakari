@@ -12,8 +12,8 @@ class HealthPlanetConfig {
 
   static const String clientSecret = String.fromEnvironment('HP_CLIENT_SECRET');
 
-  /// Health Planet's own landing page; the auth code is appended to it as
-  /// `?code=...` for the user to copy.
+  /// Health Planet's own landing page; after approval it displays the
+  /// authorization code on the page for the user to copy (OOB-style).
   static const String redirectUri = 'https://www.healthplanet.jp/success.html';
 
   static bool get isConfigured => clientSecret.isNotEmpty;

@@ -320,15 +320,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'After you approve access, the browser lands on a page '
-              'whose address contains "code=...". Copy that value (or '
-              'the whole URL) and paste it here within 10 minutes.',
+              'After you approve access, Health Planet shows an '
+              'authorization code on the page. Copy it and paste it '
+              'here within 10 minutes.',
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: const InputDecoration(hintText: 'code or full URL'),
+              decoration: const InputDecoration(
+                hintText: 'authorization code',
+              ),
             ),
           ],
         ),
