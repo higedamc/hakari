@@ -7,7 +7,14 @@ class WeightEntry {
   final double? bodyFatPercent;
   final double? bodyWaterPercent;
   final double? muscleMassKg;
+
+  /// TANITA muscle mass score (Health Planet tag 6024).
+  final int? muscleScore;
   final int? visceralFatRating;
+
+  /// Finer-grained visceral fat level incl. subcutaneous, one decimal
+  /// (Health Planet tag 6025); [visceralFatRating] is the integer level.
+  final double? visceralFatLevel2;
   final double? boneMassKg;
   final int? basalMetabolicRateKcal;
   final int? metabolicAge;
@@ -26,7 +33,9 @@ class WeightEntry {
     this.bodyFatPercent,
     this.bodyWaterPercent,
     this.muscleMassKg,
+    this.muscleScore,
     this.visceralFatRating,
+    this.visceralFatLevel2,
     this.boneMassKg,
     this.basalMetabolicRateKcal,
     this.metabolicAge,
@@ -41,7 +50,9 @@ class WeightEntry {
     double? bodyFatPercent,
     double? bodyWaterPercent,
     double? muscleMassKg,
+    int? muscleScore,
     int? visceralFatRating,
+    double? visceralFatLevel2,
     double? boneMassKg,
     int? basalMetabolicRateKcal,
     int? metabolicAge,
@@ -56,7 +67,9 @@ class WeightEntry {
       bodyFatPercent: bodyFatPercent ?? this.bodyFatPercent,
       bodyWaterPercent: bodyWaterPercent ?? this.bodyWaterPercent,
       muscleMassKg: muscleMassKg ?? this.muscleMassKg,
+      muscleScore: muscleScore ?? this.muscleScore,
       visceralFatRating: visceralFatRating ?? this.visceralFatRating,
+      visceralFatLevel2: visceralFatLevel2 ?? this.visceralFatLevel2,
       boneMassKg: boneMassKg ?? this.boneMassKg,
       basalMetabolicRateKcal:
           basalMetabolicRateKcal ?? this.basalMetabolicRateKcal,
@@ -74,7 +87,9 @@ class WeightEntry {
     'bodyFatPercent': bodyFatPercent,
     'bodyWaterPercent': bodyWaterPercent,
     'muscleMassKg': muscleMassKg,
+    'muscleScore': muscleScore,
     'visceralFatRating': visceralFatRating,
+    'visceralFatLevel2': visceralFatLevel2,
     'boneMassKg': boneMassKg,
     'basalMetabolicRateKcal': basalMetabolicRateKcal,
     'metabolicAge': metabolicAge,
@@ -90,7 +105,9 @@ class WeightEntry {
     bodyFatPercent: (map['bodyFatPercent'] as num?)?.toDouble(),
     bodyWaterPercent: (map['bodyWaterPercent'] as num?)?.toDouble(),
     muscleMassKg: (map['muscleMassKg'] as num?)?.toDouble(),
+    muscleScore: (map['muscleScore'] as num?)?.toInt(),
     visceralFatRating: map['visceralFatRating'] as int?,
+    visceralFatLevel2: (map['visceralFatLevel2'] as num?)?.toDouble(),
     boneMassKg: (map['boneMassKg'] as num?)?.toDouble(),
     basalMetabolicRateKcal: map['basalMetabolicRateKcal'] as int?,
     metabolicAge: map['metabolicAge'] as int?,

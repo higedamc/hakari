@@ -45,7 +45,8 @@ void main() {
       expect(
         FileExportService.buildCsv(const []),
         'recorded_at,weight_kg,body_fat_percent,body_water_percent,'
-        'muscle_mass_kg,visceral_fat_rating,bone_mass_kg,'
+        'muscle_mass_kg,muscle_score,visceral_fat_rating,'
+        'visceral_fat_level2,bone_mass_kg,'
         'basal_metabolic_rate_kcal,metabolic_age,source',
       );
     });
@@ -58,7 +59,9 @@ void main() {
         bodyFatPercent: 20.1,
         bodyWaterPercent: 55.2,
         muscleMassKg: 54.3,
+        muscleScore: 2,
         visceralFatRating: 7,
+        visceralFatLevel2: 7.5,
         boneMassKg: 3.1,
         basalMetabolicRateKcal: 1650,
         metabolicAge: 33,
@@ -70,7 +73,7 @@ void main() {
       expect(lines, hasLength(2));
       expect(
         lines[1],
-        '2026-07-01T08:30:15.000,72.4,20.1,55.2,54.3,7,3.1,1650,33,bleScale',
+        '2026-07-01T08:30:15.000,72.4,20.1,55.2,54.3,2,7,7.5,3.1,1650,33,bleScale',
       );
     });
 
@@ -82,8 +85,8 @@ void main() {
       );
 
       final row = FileExportService.buildCsvRow(entry);
-      expect(row, '2026-07-01T00:00:00.000,70.0,,,,,,,,manual');
-      expect(row.split(','), hasLength(10));
+      expect(row, '2026-07-01T00:00:00.000,70.0,,,,,,,,,,manual');
+      expect(row.split(','), hasLength(12));
     });
 
     test('emits one row per entry in given order', () {

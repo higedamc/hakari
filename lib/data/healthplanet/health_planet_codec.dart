@@ -17,6 +17,8 @@ class HealthPlanetCodec {
   static const String tagWeight = '6021';
   static const String tagBodyFat = '6022';
   static const String tagMuscleMass = '6023';
+  static const String tagMuscleScore = '6024';
+  static const String tagVisceralFatLevel2 = '6025';
   static const String tagVisceralFat = '6026';
   static const String tagBasalMetabolism = '6027';
   static const String tagBodyAge = '6028';
@@ -24,8 +26,9 @@ class HealthPlanetCodec {
 
   /// Tags requested from the API (everything WeightEntry can hold).
   static const String requestTags =
-      '$tagWeight,$tagBodyFat,$tagMuscleMass,'
-      '$tagVisceralFat,$tagBasalMetabolism,$tagBodyAge,$tagBoneMass';
+      '$tagWeight,$tagBodyFat,$tagMuscleMass,$tagMuscleScore,'
+      '$tagVisceralFatLevel2,$tagVisceralFat,'
+      '$tagBasalMetabolism,$tagBodyAge,$tagBoneMass';
 
   /// Parses an oauth/token response, returning (accessToken, refreshToken).
   static (String, String?) parseTokenResponse(String body) {
@@ -104,7 +107,9 @@ class HealthPlanetCodec {
           weightKg: weight,
           bodyFatPercent: tags[tagBodyFat],
           muscleMassKg: tags[tagMuscleMass],
+          muscleScore: tags[tagMuscleScore]?.round(),
           visceralFatRating: tags[tagVisceralFat]?.round(),
+          visceralFatLevel2: tags[tagVisceralFatLevel2],
           basalMetabolicRateKcal: tags[tagBasalMetabolism]?.round(),
           metabolicAge: tags[tagBodyAge]?.round(),
           boneMassKg: tags[tagBoneMass],

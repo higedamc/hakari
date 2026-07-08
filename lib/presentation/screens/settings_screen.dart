@@ -328,9 +328,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'authorization code',
-              ),
+              decoration: const InputDecoration(hintText: 'authorization code'),
             ),
           ],
         ),

@@ -42,8 +42,11 @@ String backupPlaintext(WeightEntry entry, {String? weightEventId}) {
     if (entry.bodyWaterPercent != null)
       'body_water_percent': entry.bodyWaterPercent,
     if (entry.muscleMassKg != null) 'muscle_mass_kg': entry.muscleMassKg,
+    if (entry.muscleScore != null) 'muscle_score': entry.muscleScore,
     if (entry.visceralFatRating != null)
       'visceral_fat_rating': entry.visceralFatRating,
+    if (entry.visceralFatLevel2 != null)
+      'visceral_fat_level2': entry.visceralFatLevel2,
     if (entry.boneMassKg != null) 'bone_mass_kg': entry.boneMassKg,
     if (entry.basalMetabolicRateKcal != null)
       'basal_metabolic_rate_kcal': entry.basalMetabolicRateKcal,
@@ -74,7 +77,9 @@ WeightEntry entryFromBackupMap(
     bodyFatPercent: (map['body_fat_percent'] as num?)?.toDouble(),
     bodyWaterPercent: (map['body_water_percent'] as num?)?.toDouble(),
     muscleMassKg: (map['muscle_mass_kg'] as num?)?.toDouble(),
+    muscleScore: (map['muscle_score'] as num?)?.toInt(),
     visceralFatRating: (map['visceral_fat_rating'] as num?)?.toInt(),
+    visceralFatLevel2: (map['visceral_fat_level2'] as num?)?.toDouble(),
     boneMassKg: (map['bone_mass_kg'] as num?)?.toDouble(),
     basalMetabolicRateKcal: (map['basal_metabolic_rate_kcal'] as num?)?.toInt(),
     metabolicAge: (map['metabolic_age'] as num?)?.toInt(),
