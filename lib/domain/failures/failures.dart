@@ -63,3 +63,8 @@ class ExportFailure extends Failure {
 class HealthPlanetFailure extends Failure {
   const HealthPlanetFailure(super.message, [super.cause]);
 }
+
+/// Amber did not respond to a foreground signing intent in time.
+class SignerTimeoutFailure extends SignerFailure {
+  const SignerTimeoutFailure(super.message, [super.cause]);
+}
