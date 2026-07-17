@@ -1,4 +1,5 @@
 import '../entities/app_settings.dart';
+import '../entities/daily_wellness.dart';
 import '../entities/weight_entry.dart';
 
 class PublishResult {
@@ -42,6 +43,13 @@ abstract interface class NostrService {
   /// Fetch our own NIP-101h weight events since [since]
   /// (decrypting when needed) for restore/sync.
   Future<List<WeightEntry>> fetchOwnEntries({DateTime? since});
+
+  /// Publish one wellness day as a NIP-44 encrypted kind-30078 event
+  /// (`d` = `hakari:wellness:<yyyy-MM-dd>`, replaceable per day).
+  Future<PublishResult> publishWellnessDay(DailyWellness day);
+
+  /// Fetch our own wellness backup events for restore/sync.
+  Future<List<DailyWellness>> fetchOwnWellness({DateTime? since});
 
   Future<void> dispose();
 }

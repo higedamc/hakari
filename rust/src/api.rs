@@ -27,6 +27,9 @@ pub const BACKUP_D_PREFIX: &str = "hakari:entry:";
 /// `t` tag used to find our backup events.
 pub const BACKUP_HASHTAG: &str = "hakari-health";
 
+/// `d` tag prefix for daily wellness (sleep / active energy) backups.
+pub const WELLNESS_D_PREFIX: &str = "hakari:wellness:";
+
 // ========================================
 // Globals
 // ========================================
@@ -485,6 +488,28 @@ pub fn build_unsigned_backup_event(
     let pk = PublicKey::parse(&pubkey_hex)
         .map_err(|e| anyhow!("Invalid public key '{pubkey_hex}': {e}"))?;
     let tags = build_backup_tags(&entry.id);
+    let mut unsigned = EventBuilder::new(Kind::Custom(KIND_BACKUP), encrypted_content)
+        .tags(tags)
+        .build(pk);
+    unsigned.ensure_id();
+    Ok(unsigned.as_json())
+}
+
+/// Build the unsigned kind-30078 wellness backup event JSON for external
+/// signing. [day_key] is the calendar day (`yyyy-MM-dd`);
+/// [encrypted_content] must be the NIP-44 self-encrypted wellness JSON.
+/// Parameterized-replaceable: one event per day, updates replace.
+pub fn build_unsigned_wellness_event(
+    pubkey_hex: String,
+    day_key: String,
+    encrypted_content: String,
+) -> Result<String> {
+    let pk = PublicKey::parse(&pubkey_hex)
+        .map_err(|e| anyhow!("Invalid public key '{pubkey_hex}': {e}"))?;
+    let tags = vec![
+        Tag::identifier(format!("{WELLNESS_D_PREFIX}{day_key}")),
+        Tag::hashtag(BACKUP_HASHTAG),
+    ];
     let mut unsigned = EventBuilder::new(Kind::Custom(KIND_BACKUP), encrypted_content)
         .tags(tags)
         .build(pk);

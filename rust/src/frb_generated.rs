@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -926663385;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 218902476;
 
 // Section: executor
 
@@ -122,6 +122,47 @@ fn wire__crate__api__build_unsigned_weight_event_impl(
                             api_pubkey_hex,
                             api_content_override,
                             api_encrypted,
+                        )?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__build_unsigned_wellness_event_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "build_unsigned_wellness_event",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_pubkey_hex = <String>::sse_decode(&mut deserializer);
+            let api_day_key = <String>::sse_decode(&mut deserializer);
+            let api_encrypted_content = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok = crate::api::build_unsigned_wellness_event(
+                            api_pubkey_hex,
+                            api_day_key,
+                            api_encrypted_content,
                         )?;
                         Ok(output_ok)
                     })(),
@@ -857,17 +898,20 @@ fn pde_ffi_dispatcher_primary_impl(
     match func_id {
         1 => wire__crate__api__build_unsigned_backup_event_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__build_unsigned_weight_event_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__derive_keys_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__dispose_client_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__fetch_health_events_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__generate_keys_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__init_client_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__nip44_decrypt_local_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__nip44_encrypt_local_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__publish_signed_event_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__publish_weight_entry_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__relay_statuses_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__sign_event_local_impl(port, ptr, rust_vec_len, data_len),
+        3 => {
+            wire__crate__api__build_unsigned_wellness_event_impl(port, ptr, rust_vec_len, data_len)
+        }
+        4 => wire__crate__api__derive_keys_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__dispose_client_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__fetch_health_events_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__generate_keys_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__init_client_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__nip44_decrypt_local_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__nip44_encrypt_local_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__publish_signed_event_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__publish_weight_entry_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__relay_statuses_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__sign_event_local_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

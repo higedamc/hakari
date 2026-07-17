@@ -62,6 +62,50 @@ build-time `--dart-define=HP_CLIENT_SECRET=...` override also works for personal
 Note the measurement still reaches the cloud via the official TANITA app first — that is
 inherent to these scales.
 
+## Pixel Watch 2 on GrapheneOS
+
+The wellness card (sleep + active energy) reads from Health Connect, which
+is **on-device only** (an AOSP Mainline module since Android 14 — no cloud
+sync; the optional Backup & restore export is off by default). Getting a
+Pixel Watch 2's data into it on GrapheneOS:
+
+1. **Pairing**: sandboxed Google Play + the Google Pixel Watch app. Grant
+   Play Services *Location* and *Nearby devices* during pairing. PW2
+   pairing on GrapheneOS is known to be flaky — temporarily enabling the
+   Google app is a documented workaround. Prefer the Wi-Fi model (LTE eSIM
+   provisioning needs stock Android).
+2. **Data path**: the Fitbit / Google Health app receives the watch data
+   and can write sleep + active calories into Health Connect ("Sync with
+   Health Connect" in its settings). Grant Hakari read-only access.
+3. **Do NOT isolate the Fitbit app in Private Space / a separate
+   profile**: Health Connect data does not cross profiles, so Hakari
+   could no longer read it. Isolation must happen inside the same
+   profile instead:
+   - GrapheneOS **Network permission toggle**: keep the Fitbit app's
+     INTERNET permission off; enable it only when you choose to sync,
+     then turn it off again. Sync requires Google's cloud (there is no
+     verified offline BT-only mode), but this reduces exposure from
+     "always" to moments you pick.
+   - In the Fitbit app: disable *Usage & diagnostics* and
+     personalization options.
+   - GrapheneOS Sensors permission off, Location off, empty Contact /
+     Storage Scopes.
+   - Don't configure Wi-Fi on the watch (keeps the only sync path
+     BT-via-phone).
+   - Leave Health Connect's *Backup and restore* cloud export off.
+4. **Residual exposure**: with the official path, watch metrics do reach
+   Google/Fitbit servers on every sync — unavoidable. For sleep only,
+   [Sleep as Android](https://docs.sleep.urbandroid.org/devices/wearos.html)
+   tracks on the watch and syncs phone-side over BT with no vendor
+   cloud, writing directly to Health Connect; Hakari reads either source
+   the same way.
+
+Once data flows, Hakari persists daily sleep/energy in an encrypted Hive
+box and (like weight entries) backs each day up to your relays as a
+NIP-44 self-encrypted kind-30078 event (`d` =
+`hakari:wellness:<yyyy-MM-dd>`). "Fetch my data from relays" restores
+both entries and wellness days.
+
 ## Screenshots
 
 Store-listing assets live in [`screenshots/`](screenshots/) (Pixel-class emulator, API 35):

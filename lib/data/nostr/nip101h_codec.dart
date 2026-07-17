@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../domain/entities/daily_wellness.dart';
 import '../../domain/entities/weight_entry.dart';
 
 /// Pure NIP-101h (de)serialization helpers, kept free of FFI so they are
@@ -13,6 +14,7 @@ const int weightEventKind = 1351;
 const int backupEventKind = 30078;
 const String backupDTagPrefix = 'hakari:entry:';
 const String backupHashtag = 'hakari-health';
+const String wellnessDTagPrefix = 'hakari:wellness:';
 
 /// Content string of a plain (unencrypted) kind-1351 weight event.
 /// Matches the Rust formatter: integral weights keep one decimal ("72.0").
@@ -114,5 +116,49 @@ WeightEntry? entryFromWeightEvent({
     weightKg: weightKg,
     source: MeasurementSource.imported,
     nostrEventId: eventId,
+  );
+}
+
+/// Plaintext JSON for a daily-wellness kind-30078 backup (before NIP-44
+/// encryption). One event per calendar day, `d` tag
+/// `hakari:wellness:<yyyy-MM-dd>`.
+String wellnessPlaintext(DailyWellness day) {
+  return jsonEncode({
+    'day': day.dayKey,
+    if (day.sleepHours != null) 'sleep_hours': day.sleepHours,
+    if (day.activeEnergyKcal != null)
+      'active_energy_kcal': day.activeEnergyKcal,
+  });
+}
+
+/// Whether a kind-30078 event is a wellness backup (vs an entry backup).
+bool isWellnessEvent(List<List<String>> tags) =>
+    tagValue(tags, 'd')?.startsWith(wellnessDTagPrefix) ?? false;
+
+/// Map a decrypted wellness backup JSON to a [DailyWellness]; null when
+/// the payload is not a parseable wellness day (remote input — hostile).
+DailyWellness? wellnessFromBackupMap(
+  Map<String, dynamic> map, {
+  required String backupEventId,
+}) {
+  final raw = map['day'];
+  if (raw is! String || raw.length != 10) return null;
+  final year = int.tryParse(raw.substring(0, 4));
+  final month = int.tryParse(raw.substring(5, 7));
+  final dayOfMonth = int.tryParse(raw.substring(8, 10));
+  if (year == null || month == null || dayOfMonth == null) return null;
+  if (month < 1 || month > 12 || dayOfMonth < 1 || dayOfMonth > 31) {
+    return null;
+  }
+  final sleep = (map['sleep_hours'] as num?)?.toDouble();
+  final energy = (map['active_energy_kcal'] as num?)?.toDouble();
+  if (sleep == null && energy == null) return null;
+  if (sleep != null && (sleep < 0 || sleep > 24)) return null;
+  if (energy != null && (energy < 0 || energy > 20000)) return null;
+  return DailyWellness(
+    day: DateTime(year, month, dayOfMonth),
+    sleepHours: sleep,
+    activeEnergyKcal: energy,
+    nostrEventId: backupEventId,
   );
 }

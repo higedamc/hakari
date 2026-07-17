@@ -66,6 +66,20 @@ Future<String> buildUnsignedBackupEvent({
   encryptedContent: encryptedContent,
 );
 
+/// Build the unsigned kind-30078 wellness backup event JSON for external
+/// signing. [day_key] is the calendar day (`yyyy-MM-dd`);
+/// [encrypted_content] must be the NIP-44 self-encrypted wellness JSON.
+/// Parameterized-replaceable: one event per day, updates replace.
+Future<String> buildUnsignedWellnessEvent({
+  required String pubkeyHex,
+  required String dayKey,
+  required String encryptedContent,
+}) => RustLib.instance.api.crateApiBuildUnsignedWellnessEvent(
+  pubkeyHex: pubkeyHex,
+  dayKey: dayKey,
+  encryptedContent: encryptedContent,
+);
+
 /// Publish one measurement as BOTH a kind-1351 weight event (interop) and a
 /// kind-30078 encrypted full-entry backup (lossless restore).
 ///
