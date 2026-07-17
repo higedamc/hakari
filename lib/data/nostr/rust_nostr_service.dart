@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/entities/app_settings.dart';
+import '../../domain/entities/daily_wellness.dart';
 import '../../domain/entities/weight_entry.dart';
 import '../../domain/failures/failures.dart';
 import '../../domain/services/nostr_service.dart';
@@ -221,6 +222,94 @@ class RustNostrService implements NostrService {
   }
 
   @override
+  Future<PublishResult> publishWellnessDay(DailyWellness day) async {
+    _requireSettings();
+    if (!_clientReady) {
+      throw const NostrFailure('Nostr client not initialized');
+    }
+    final ownPubkey =
+        _requireSettings().pubkeyHex ?? await _signer.getPublicKey();
+    if (ownPubkey == null) {
+      throw const NostrFailure('No public key available for publishing');
+    }
+    // Same path for both signer modes: LocalKeySignerService performs
+    // these ops in-process, Amber via the silent/foreground flow.
+    final cipher = await _signer.nip44Encrypt(
+      wellnessPlaintext(day),
+      ownPubkey,
+    );
+    final String unsigned;
+    try {
+      unsigned = await bridge.buildUnsignedWellnessEvent(
+        pubkeyHex: ownPubkey,
+        dayKey: day.dayKey,
+        encryptedContent: cipher,
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+    final signed = await _signer.signEvent(unsigned);
+    try {
+      final eventId =
+          (jsonDecode(signed) as Map<String, dynamic>)['id'] as String? ?? '';
+      final result = await bridge.publishSignedEvent(eventJson: signed);
+      return PublishResult(
+        eventId: eventId,
+        successfulRelays: result.successfulRelays,
+        failedRelays: result.failedRelays,
+      );
+    } on Failure {
+      rethrow;
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<List<DailyWellness>> fetchOwnWellness({DateTime? since}) async {
+    final settings = _requireSettings();
+    if (!_clientReady) {
+      throw const NostrFailure('Nostr client not initialized');
+    }
+    final ownPubkey = settings.pubkeyHex ?? await _signer.getPublicKey();
+    if (ownPubkey == null) {
+      throw const NostrFailure('No public key available for fetching');
+    }
+    final List<bridge.RawEventFfi> events;
+    try {
+      events = await bridge.fetchHealthEvents(
+        pubkeyHex: ownPubkey,
+        sinceUnix: since == null ? null : since.millisecondsSinceEpoch ~/ 1000,
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+
+    final days = <DailyWellness>[];
+    final seenEventIds = <String>{};
+    final seenDays = <String>{};
+    for (final event in events.where(
+      (e) => e.kind == backupEventKind && isWellnessEvent(e.tags),
+    )) {
+      if (!seenEventIds.add(event.id)) continue;
+      try {
+        final plain = await _signer.nip44Decrypt(event.content, ownPubkey);
+        final day = wellnessFromBackupMap(
+          jsonDecode(plain) as Map<String, dynamic>,
+          backupEventId: event.id,
+        );
+        // Replaceable events: relays should keep only the newest per d
+        // tag, but a hostile/lagging relay may return several — events
+        // arrive newest-first, keep the first per day.
+        if (day != null && seenDays.add(day.dayKey)) days.add(day);
+      } catch (_) {
+        // Undecryptable / malformed: skip rather than failing the sync.
+      }
+    }
+    return days;
+  }
+
+  @override
   Future<List<WeightEntry>> fetchOwnEntries({DateTime? since}) async {
     final settings = _requireSettings();
     if (!_clientReady) {
@@ -249,7 +338,11 @@ class RustNostrService implements NostrService {
     // intent mode), so drop duplicates by event id before decrypting.
     final seenEventIds = <String>{};
 
-    for (final event in events.where((e) => e.kind == backupEventKind)) {
+    // Wellness backups are handled by fetchOwnWellness; skipping them
+    // here avoids one signer decrypt round-trip per wellness day.
+    for (final event in events.where(
+      (e) => e.kind == backupEventKind && !isWellnessEvent(e.tags),
+    )) {
       if (!seenEventIds.add(event.id)) continue;
       try {
         final plain = await _signer.nip44Decrypt(event.content, ownPubkey);

@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/providers.dart';
 import '../../domain/entities/app_settings.dart';
+import '../../domain/entities/daily_wellness.dart';
 import '../../domain/entities/weight_entry.dart';
 import '../../domain/failures/failures.dart';
 import '../../domain/repositories/weight_repository.dart';
+import '../../domain/repositories/wellness_repository.dart';
 import '../../domain/services/nostr_service.dart';
 import 'settings_provider.dart';
 
@@ -36,6 +38,7 @@ class NostrSyncController extends Notifier<SyncStatus> {
 
   NostrService get _nostr => ref.read(nostrServiceProvider);
   WeightRepository get _repo => ref.read(weightRepositoryProvider);
+  WellnessRepository get _wellnessRepo => ref.read(wellnessRepositoryProvider);
 
   Future<AppSettings> _settings() async {
     try {
@@ -97,7 +100,9 @@ class NostrSyncController extends Notifier<SyncStatus> {
     try {
       final settings = await _settings();
       final pending = await _repo.getUnpublished();
-      if (pending.isEmpty) {
+      final pendingWellness = await _getUnpublishedWellness();
+      final total = pending.length + pendingWellness.length;
+      if (total == 0) {
         state = const SyncStatus(
           SyncPhase.success,
           'Everything is already published.',
@@ -107,17 +112,20 @@ class NostrSyncController extends Notifier<SyncStatus> {
       var published = 0;
       var failed = 0;
       String? abortReason;
+
+      SyncStatus progress() => SyncStatus(
+        SyncPhase.syncing,
+        'Publishing ${published + failed + 1}/$total...',
+        published + failed,
+        total,
+      );
+
       for (final entry in pending) {
         if (_cancelRequested) {
           abortReason = 'Cancelled';
           break;
         }
-        state = SyncStatus(
-          SyncPhase.syncing,
-          'Publishing ${published + failed + 1}/${pending.length}...',
-          published + failed,
-          pending.length,
-        );
+        state = progress();
         try {
           final result = await _nostr.publishEntry(
             entry,
@@ -142,17 +150,50 @@ class NostrSyncController extends Notifier<SyncStatus> {
           failed++;
         }
       }
+
+      // Wellness days (sleep / active energy) ride the same batch with
+      // the same abort semantics.
+      if (abortReason == null) {
+        for (final day in pendingWellness) {
+          if (_cancelRequested) {
+            abortReason = 'Cancelled';
+            break;
+          }
+          state = progress();
+          try {
+            final result = await _nostr.publishWellnessDay(day);
+            if (result.success) {
+              await _wellnessRepo.markBackedUp(day, result.eventId);
+              published++;
+            } else {
+              failed++;
+            }
+          } on SignerRejectedFailure {
+            abortReason = 'Stopped: rejected in Amber';
+            break;
+          } on SignerTimeoutFailure {
+            abortReason = 'Stopped: Amber did not respond';
+            break;
+          } on SignerUnavailableFailure catch (f) {
+            abortReason = 'Stopped: ${f.message}';
+            break;
+          } on Failure {
+            failed++;
+          }
+        }
+      }
+
       if (abortReason != null) {
         state = SyncStatus(
           SyncPhase.error,
-          '$abortReason. Published $published of ${pending.length}.',
+          '$abortReason. Published $published of $total.',
         );
         return;
       }
       state = failed == 0
           ? SyncStatus(
               SyncPhase.success,
-              'Published $published ${published == 1 ? 'entry' : 'entries'}.',
+              'Published $published ${published == 1 ? 'item' : 'items'}.',
             )
           : SyncStatus(
               SyncPhase.error,
@@ -162,6 +203,15 @@ class NostrSyncController extends Notifier<SyncStatus> {
       state = SyncStatus(SyncPhase.error, f.message);
     } catch (e) {
       state = SyncStatus(SyncPhase.error, 'Sync failed: $e');
+    }
+  }
+
+  /// Unpublished wellness days; an unwired repo (tests) yields none.
+  Future<List<DailyWellness>> _getUnpublishedWellness() async {
+    try {
+      return await _wellnessRepo.getUnpublished();
+    } catch (_) {
+      return const [];
     }
   }
 
@@ -187,11 +237,13 @@ class NostrSyncController extends Notifier<SyncStatus> {
         if (eventId != null) knownEventIds.add(eventId);
         imported++;
       }
+      final importedWellness = await _restoreWellness(since: since);
+      final restored = imported + importedWellness;
       state = SyncStatus(
         SyncPhase.success,
-        imported == 0
+        restored == 0
             ? 'Already up to date.'
-            : 'Imported $imported ${imported == 1 ? 'entry' : 'entries'} '
+            : 'Imported $restored ${restored == 1 ? 'item' : 'items'} '
                   'from relays.',
       );
     } on Failure catch (f) {
@@ -199,6 +251,42 @@ class NostrSyncController extends Notifier<SyncStatus> {
     } catch (e) {
       state = SyncStatus(SyncPhase.error, 'Fetch failed: $e');
     }
+  }
+
+  /// Restores wellness backups. Merged days that exactly match the
+  /// backup keep its event id (not re-published); a local day holding
+  /// more data than the backup stays unpublished so the fuller version
+  /// is backed up on the next publish run.
+  Future<int> _restoreWellness({DateTime? since}) async {
+    final List<DailyWellness> fetched;
+    try {
+      fetched = await _nostr.fetchOwnWellness(since: since);
+    } on Failure {
+      return 0; // Best-effort: weight restore already succeeded.
+    }
+    var imported = 0;
+    for (final day in fetched) {
+      try {
+        final before = await _wellnessRepo.getRange(day.day, day.day);
+        await _wellnessRepo.upsertDay(day);
+        final stored = (await _wellnessRepo.getRange(
+          day.day,
+          day.day,
+        )).firstOrNull;
+        if (stored == null) continue;
+        final matchesBackup =
+            stored.sleepHours == day.sleepHours &&
+            stored.activeEnergyKcal == day.activeEnergyKcal;
+        final eventId = day.nostrEventId;
+        if (matchesBackup && stored.nostrEventId == null && eventId != null) {
+          await _wellnessRepo.markBackedUp(stored, eventId);
+        }
+        if (before.isEmpty) imported++;
+      } on Failure {
+        // Skip storage failures per-day rather than failing the fetch.
+      }
+    }
+    return imported;
   }
 }
 
