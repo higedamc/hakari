@@ -56,10 +56,14 @@ class HealthKitConnectService implements HealthService {
   ];
 
   /// Read-only types backing the readiness card. Sleep sessions exist on
-  /// Health Connect; HealthKit reports asleep segments instead.
+  /// Health Connect; HealthKit reports asleep segments instead. Total
+  /// calories is the fallback energy signal: the Google Health app
+  /// (former Fitbit) writes TOTAL but not ACTIVE calories to Health
+  /// Connect.
   static List<HealthDataType> get _wellnessTypes => [
     Platform.isIOS ? HealthDataType.SLEEP_ASLEEP : HealthDataType.SLEEP_SESSION,
     HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.TOTAL_CALORIES_BURNED,
   ];
 
   bool get _isSupportedPlatform => Platform.isAndroid || Platform.isIOS;
@@ -221,15 +225,26 @@ class HealthKitConnectService implements HealthService {
 
       final sleep = <SleepSpan>[];
       final energy = <HealthSample>[];
+      final energyFallback = <HealthSample>[];
       for (final point in points) {
+        final value = point.value;
         switch (point.type) {
           case HealthDataType.SLEEP_SESSION:
           case HealthDataType.SLEEP_ASLEEP:
             sleep.add(SleepSpan(start: point.dateFrom, end: point.dateTo));
           case HealthDataType.ACTIVE_ENERGY_BURNED:
-            final value = point.value;
             if (value is NumericHealthValue) {
               energy.add(
+                HealthSample(
+                  uuid: point.uuid,
+                  timestamp: point.dateFrom,
+                  value: value.numericValue.toDouble(),
+                ),
+              );
+            }
+          case HealthDataType.TOTAL_CALORIES_BURNED:
+            if (value is NumericHealthValue) {
+              energyFallback.add(
                 HealthSample(
                   uuid: point.uuid,
                   timestamp: point.dateFrom,
@@ -244,6 +259,7 @@ class HealthKitConnectService implements HealthService {
       return buildDailyWellness(
         sleep: sleep,
         energy: energy,
+        energyFallback: energyFallback,
         today: todayStart,
         days: days,
       );
@@ -264,9 +280,13 @@ class HealthKitConnectService implements HealthService {
   /// A sleep span counts toward the day its END falls on (a night ending
   /// 06:40 on the 8th is "last night" for the 8th). Overlapping records
   /// with identical bounds (session + stages duplicates) are collapsed.
+  /// Days with no active-energy samples fall back to [energyFallback]
+  /// (total calories) — readiness only compares days against each other,
+  /// so the consistent-per-day signal is what matters.
   static List<DailyWellness> buildDailyWellness({
     required List<SleepSpan> sleep,
     required List<HealthSample> energy,
+    List<HealthSample> energyFallback = const [],
     required DateTime today,
     required int days,
   }) {
@@ -302,6 +322,15 @@ class HealthKitConnectService implements HealthService {
             sample.timestamp.isBefore(dayEnd);
         if (!inDay) continue;
         energyKcal = (energyKcal ?? 0) + sample.value;
+      }
+      if (energyKcal == null) {
+        for (final sample in energyFallback) {
+          final inDay =
+              !sample.timestamp.isBefore(dayStart) &&
+              sample.timestamp.isBefore(dayEnd);
+          if (!inDay) continue;
+          energyKcal = (energyKcal ?? 0) + sample.value;
+        }
       }
 
       result.add(

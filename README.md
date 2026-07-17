@@ -76,9 +76,16 @@ Pixel Watch 2's data into it on GrapheneOS:
    provisioning needs stock Android).
 2. **Data path**: the **Google Health app** (the former Fitbit app —
    discontinued and folded into Google Health) receives the watch data
-   and can write sleep + active calories into Health Connect ("Sync with
-   Health Connect" in its settings, with per-datatype write permissions).
-   Grant Hakari read-only access. Two gotchas:
+   and writes sleep + total calories into Health Connect. Enable it via
+   *Connections (top left) → Partner apps → Sync your favorite health
+   apps → Set up*, then walk the sequential permission screens: allow
+   **Fitness and wellness data** (this is the write grant that covers
+   sleep), and under "additional access" enable **background data**
+   (without it, syncing to Health Connect only happens while the app is
+   open; "past data" access is optional for this pipeline). Grant Hakari
+   read-only access. Note Google Health writes **total** calories, not
+   active — Hakari falls back to total calories automatically. Two more
+   gotchas:
    - Enabling the sync and each subsequent sync **needs the Google
      Health app online** — the watch data is processed via Google's
      cloud before it lands in Health Connect, so a network-revoked app
