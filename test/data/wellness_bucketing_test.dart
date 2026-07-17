@@ -64,6 +64,37 @@ void main() {
       expect(result.single.sleepHours, closeTo(7.0, 0.01));
     });
 
+    test('falls back to total calories only when active energy is absent', () {
+      final result = HealthKitConnectService.buildDailyWellness(
+        sleep: const [],
+        energy: [
+          HealthSample(
+            uuid: 'a',
+            timestamp: DateTime(2026, 7, 8, 10),
+            value: 300,
+          ),
+        ],
+        energyFallback: [
+          HealthSample(
+            uuid: 't1',
+            timestamp: DateTime(2026, 7, 8, 10),
+            value: 2500,
+          ),
+          HealthSample(
+            uuid: 't2',
+            timestamp: DateTime(2026, 7, 7, 10),
+            value: 2400,
+          ),
+        ],
+        today: today,
+        days: 2,
+      );
+      // The 8th has active energy: fallback ignored. The 7th has only
+      // total calories: fallback used.
+      expect(result[1].activeEnergyKcal, 300);
+      expect(result[0].activeEnergyKcal, 2400);
+    });
+
     test('ignores zero/negative spans and out-of-window samples', () {
       final result = HealthKitConnectService.buildDailyWellness(
         sleep: [
