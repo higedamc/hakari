@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/repositories/settings_repository.dart';
 import '../../domain/repositories/weight_repository.dart';
+import '../../domain/repositories/wellness_repository.dart';
 import '../../domain/services/export_service.dart';
 import '../../domain/services/health_planet_service.dart';
 import '../../domain/services/health_service.dart';
@@ -40,5 +41,9 @@ final exportServiceProvider = Provider<ExportService>(
 );
 
 final healthPlanetServiceProvider = Provider<HealthPlanetService>(
+  (ref) => throw UnimplementedError('override in main'),
+);
+
+final wellnessRepositoryProvider = Provider<WellnessRepository>(
   (ref) => throw UnimplementedError('override in main'),
 );

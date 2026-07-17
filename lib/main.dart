@@ -11,6 +11,7 @@ import 'data/healthplanet/http_health_planet_service.dart';
 import 'data/local/hive_encryption.dart';
 import 'data/local/hive_settings_repository.dart';
 import 'data/local/hive_weight_repository.dart';
+import 'data/local/hive_wellness_repository.dart';
 import 'data/nostr/local_key_signer_service.dart';
 import 'data/nostr/nsec_store.dart';
 import 'data/nostr/rust_nostr_service.dart';
@@ -30,11 +31,16 @@ Future<void> main() async {
     HiveWeightRepository.boxName,
     cipher,
   );
+  final wellnessBox = await HiveEncryption.openEncryptedBox<dynamic>(
+    HiveWellnessRepository.boxName,
+    cipher,
+  );
   final settingsBox = await HiveSettingsRepository.openBox();
 
   await RustNostrService.initRustLib();
 
   final weightRepository = HiveWeightRepository(weightBox);
+  final wellnessRepository = HiveWellnessRepository(wellnessBox);
   final settingsRepository = HiveSettingsRepository(settingsBox);
 
   final nsecStore = NsecStore(cipher: cipher);
@@ -63,6 +69,7 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         weightRepositoryProvider.overrideWithValue(weightRepository),
+        wellnessRepositoryProvider.overrideWithValue(wellnessRepository),
         settingsRepositoryProvider.overrideWithValue(settingsRepository),
         scaleServiceProvider.overrideWithValue(BluePlusScaleService()),
         healthServiceProvider.overrideWithValue(HealthKitConnectService()),
