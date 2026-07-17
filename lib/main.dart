@@ -47,7 +47,12 @@ Future<void> main() async {
   final signerService = SwitchingSignerService(
     settingsRepository,
     localSigner: LocalKeySignerService(nsecStore),
-    amberSigner: const AmberSignerService(),
+    amberSigner: AmberSignerService(
+      // npub lets the silent ContentProvider path address the right
+      // Amber account; without it every op falls back to the intent UI.
+      pubkeyHexProvider: () async =>
+          (await settingsRepository.load()).pubkeyHex,
+    ),
   );
   final nostrService = RustNostrService(
     signer: signerService,

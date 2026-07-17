@@ -27,6 +27,20 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Hakari'),
         actions: [
+          if (syncStatus.hasProgress) ...[
+            Center(
+              child: Text(
+                '${syncStatus.done}/${syncStatus.total}',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Cancel publishing',
+              icon: const Icon(Icons.stop_circle_outlined),
+              onPressed: () =>
+                  ref.read(nostrSyncProvider.notifier).cancelBatch(),
+            ),
+          ],
           IconButton(
             tooltip: 'Publish unpublished entries to Nostr',
             onPressed: syncStatus.isSyncing

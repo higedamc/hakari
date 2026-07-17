@@ -3,6 +3,9 @@ package org.lekt.hakari
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.Executors
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -50,6 +53,9 @@ class MainActivity : FlutterFragmentActivity() {
     private val pendingResults =
         mutableMapOf<Int, Pair<MethodChannel.Result, String>>()
     private var nextRequestCode = AMBER_REQUEST_CODE_BASE
+
+    /** Single thread for Amber ContentProvider queries (never the UI thread). */
+    private val amberQueryExecutor = Executors.newSingleThreadExecutor()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -303,6 +309,14 @@ class MainActivity : FlutterFragmentActivity() {
         nextRequestCode =
             if (nextRequestCode >= AMBER_REQUEST_CODE_MAX) AMBER_REQUEST_CODE_BASE
             else nextRequestCode + 1
+        // Resolve any leaked slot from a never-returning Amber launch so
+        // a request-code wrap cannot deliver a stale result to the wrong
+        // caller (Dart has long since timed out on it).
+        pendingResults.remove(requestCode)?.first?.error(
+            "AMBER_STALE",
+            "Superseded by a newer Amber request",
+            null
+        )
         pendingResults[requestCode] = Pair(result, requestType)
         try {
             android.util.Log.d(
@@ -412,6 +426,24 @@ class MainActivity : FlutterFragmentActivity() {
         result: MethodChannel.Result
     ) {
         if (!requireTrustedAmber(result)) return
+        // ContentResolver.query can block while Amber's process spins up;
+        // run it off the platform thread and reply via the main looper
+        // (MethodChannel.Result must be answered on the platform thread).
+        val mainHandler = Handler(Looper.getMainLooper())
+        amberQueryExecutor.execute {
+            queryAmberContentProviderBlocking(uri, projection, resultColumns) {
+                block -> mainHandler.post { block(result) }
+            }
+        }
+    }
+
+    /** Runs the blocking query; [reply] posts result callbacks to main. */
+    private fun queryAmberContentProviderBlocking(
+        uri: String,
+        projection: Array<String>,
+        resultColumns: List<String>,
+        reply: ((MethodChannel.Result) -> Unit) -> Unit
+    ) {
         try {
             val cursor = contentResolver.query(
                 Uri.parse(uri),
@@ -421,28 +453,34 @@ class MainActivity : FlutterFragmentActivity() {
                 null
             )
             if (cursor == null) {
-                result.error(
-                    "AMBER_ERROR",
-                    "No response from Amber ContentProvider",
-                    null
-                )
-                return
-            }
-            cursor.use {
-                if (!it.moveToFirst()) {
-                    result.error(
+                reply { r ->
+                    r.error(
                         "AMBER_ERROR",
                         "No response from Amber ContentProvider",
                         null
                     )
+                }
+                return
+            }
+            cursor.use {
+                if (!it.moveToFirst()) {
+                    reply { r ->
+                        r.error(
+                            "AMBER_ERROR",
+                            "No response from Amber ContentProvider",
+                            null
+                        )
+                    }
                     return
                 }
                 if (it.getColumnIndex("rejected") >= 0) {
-                    result.error(
-                        "AMBER_REJECTED",
-                        "Permission not granted. User needs to approve in Amber.",
-                        null
-                    )
+                    reply { r ->
+                        r.error(
+                            "AMBER_REJECTED",
+                            "Permission not granted. User needs to approve in Amber.",
+                            null
+                        )
+                    }
                     return
                 }
                 for (column in resultColumns) {
@@ -450,24 +488,28 @@ class MainActivity : FlutterFragmentActivity() {
                     if (index >= 0) {
                         val value = it.getString(index)
                         if (!value.isNullOrEmpty()) {
-                            result.success(value)
+                            reply { r -> r.success(value) }
                             return
                         }
                     }
                 }
-                result.error(
-                    "AMBER_ERROR",
-                    "No valid response from Amber ContentProvider",
-                    null
-                )
+                reply { r ->
+                    r.error(
+                        "AMBER_ERROR",
+                        "No valid response from Amber ContentProvider",
+                        null
+                    )
+                }
             }
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Amber ContentProvider query failed", e)
-            result.error(
-                "AMBER_ERROR",
-                "Amber ContentProvider query failed: ${e.message}",
-                null
-            )
+            reply { r ->
+                r.error(
+                    "AMBER_ERROR",
+                    "Amber ContentProvider query failed: ${e.message}",
+                    null
+                )
+            }
         }
     }
 }
