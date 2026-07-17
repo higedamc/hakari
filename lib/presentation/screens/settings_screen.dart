@@ -661,8 +661,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onChanged: (v) => _updateOnly((c) => c.setAutoPublishToNostr(v)),
       ),
       SwitchListTile(
-        title: const Text('Auto-sync to Health'),
-        subtitle: const Text('Write each new entry to Health Connect / Health'),
+        title: Text('Auto-sync to $_healthStoreName'),
+        subtitle: Text('Write each new entry to $_healthStoreName'),
         value: settings.autoSyncToHealth,
         onChanged: (v) => _updateOnly((c) => c.setAutoSyncToHealth(v)),
       ),
