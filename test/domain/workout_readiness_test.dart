@@ -22,6 +22,15 @@ void main() {
       ]);
       expect(result!.readinessPercent, 100);
       expect(result.headline, 'Great day to train');
+      expect(result.lastNightSleepHours, 8);
+      expect(result.averageSleepHours, 8);
+      expect(result.nightsSampled, 8);
+    });
+
+    test('formatSleepHours renders h/m', () {
+      expect(formatSleepHours(7.5), '7h 30m');
+      expect(formatSleepHours(8), '8h');
+      expect(formatSleepHours(6.008), '6h');
     });
 
     test('short last night drops readiness steeply', () {
@@ -83,6 +92,8 @@ void main() {
       ]);
       expect(result!.readinessPercent, 100);
       expect(result.reasons.first, contains('No sleep record'));
+      expect(result.lastNightSleepHours, isNull);
+      expect(result.nightsSampled, 7);
     });
   });
 }

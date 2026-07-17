@@ -14,12 +14,31 @@ class ReadinessResult {
   /// Human-readable factors behind the numbers, most important first.
   final List<String> reasons;
 
+  /// Last night's sleep in hours; null when today has no record yet.
+  final double? lastNightSleepHours;
+
+  /// Mean sleep over the sampled nights (drives the efficiency figure).
+  final double averageSleepHours;
+
+  /// How many nights of data back the average.
+  final int nightsSampled;
+
   const ReadinessResult({
     required this.readinessPercent,
     required this.dietEfficiencyPercent,
     required this.headline,
     required this.reasons,
+    required this.lastNightSleepHours,
+    required this.averageSleepHours,
+    required this.nightsSampled,
   });
+}
+
+/// "7h 30m" style formatting for sleep durations.
+String formatSleepHours(double hours) {
+  final h = hours.floor();
+  final m = ((hours - h) * 60).round();
+  return m == 0 ? '${h}h' : '${h}h ${m.toString().padLeft(2, '0')}m';
 }
 
 /// Heuristic readiness score from recent sleep + active energy.
@@ -109,6 +128,9 @@ ReadinessResult? computeReadiness(List<DailyWellness> history) {
       _ => 'Recovery day',
     },
     reasons: reasons,
+    lastNightSleepHours: lastNight,
+    averageSleepHours: avgSleep,
+    nightsSampled: sleepSamples.length,
   );
 }
 
@@ -125,8 +147,4 @@ double _sleepFactor(double hours) {
   return 0.25 + (hours - 4) / 3.0 * 0.75;
 }
 
-String _fmtHours(double hours) {
-  final h = hours.floor();
-  final m = ((hours - h) * 60).round();
-  return m == 0 ? '${h}h' : '${h}h ${m.toString().padLeft(2, '0')}m';
-}
+String _fmtHours(double hours) => formatSleepHours(hours);

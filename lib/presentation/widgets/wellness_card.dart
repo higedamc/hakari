@@ -75,6 +75,20 @@ class WellnessCard extends ConsumerWidget {
             const SizedBox(height: 12),
             Row(
               children: [
+                Icon(
+                  Icons.bedtime_outlined,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(_sleepSummary(readiness), style: text.bodyMedium),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,17 +112,22 @@ class WellnessCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (readiness.reasons.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                readiness.reasons.first,
-                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-            ],
           ],
         ),
       ),
     );
+  }
+
+  /// "Slept 7h 30m · 7h 05m avg (7 nights)" — last night when recorded,
+  /// otherwise the average only.
+  static String _sleepSummary(ReadinessResult readiness) {
+    final lastNight = readiness.lastNightSleepHours;
+    final avg =
+        '${formatSleepHours(readiness.averageSleepHours)} avg '
+        '(${readiness.nightsSampled} '
+        '${readiness.nightsSampled == 1 ? 'night' : 'nights'})';
+    if (lastNight == null) return 'No sleep record yet · $avg';
+    return 'Slept ${formatSleepHours(lastNight)} · $avg';
   }
 
   void _showInfo(BuildContext context, ReadinessResult readiness) {
