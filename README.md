@@ -74,19 +74,29 @@ Pixel Watch 2's data into it on GrapheneOS:
    pairing on GrapheneOS is known to be flaky — temporarily enabling the
    Google app is a documented workaround. Prefer the Wi-Fi model (LTE eSIM
    provisioning needs stock Android).
-2. **Data path**: the Fitbit / Google Health app receives the watch data
+2. **Data path**: the **Google Health app** (the former Fitbit app —
+   discontinued and folded into Google Health) receives the watch data
    and can write sleep + active calories into Health Connect ("Sync with
-   Health Connect" in its settings). Grant Hakari read-only access.
-3. **Do NOT isolate the Fitbit app in Private Space / a separate
+   Health Connect" in its settings, with per-datatype write permissions).
+   Grant Hakari read-only access. Two gotchas:
+   - Enabling the sync and each subsequent sync **needs the Google
+     Health app online** — the watch data is processed via Google's
+     cloud before it lands in Health Connect, so a network-revoked app
+     writes nothing.
+   - The sync is **essentially forward-looking**: recent history may
+     backfill inconsistently, but do not expect past nights to appear.
+     Health Connect's *Data and access → Sleep* screen only lists the
+     category once some app has actually written sleep data.
+3. **Do NOT isolate the Google Health app in Private Space / a separate
    profile**: Health Connect data does not cross profiles, so Hakari
    could no longer read it. Isolation must happen inside the same
    profile instead:
-   - GrapheneOS **Network permission toggle**: keep the Fitbit app's
-     INTERNET permission off; enable it only when you choose to sync,
-     then turn it off again. Sync requires Google's cloud (there is no
+   - GrapheneOS **Network permission toggle**: keep the Google Health
+     app's INTERNET permission off; enable it only when you choose to
+     sync, then turn it off again. Sync requires Google's cloud (there is no
      verified offline BT-only mode), but this reduces exposure from
      "always" to moments you pick.
-   - In the Fitbit app: disable *Usage & diagnostics* and
+   - In the Google Health app: disable *Usage & diagnostics* and
      personalization options.
    - GrapheneOS Sensors permission off, Location off, empty Contact /
      Storage Scopes.
@@ -98,7 +108,8 @@ Pixel Watch 2's data into it on GrapheneOS:
    [Sleep as Android](https://docs.sleep.urbandroid.org/devices/wearos.html)
    tracks on the watch and syncs phone-side over BT with no vendor
    cloud, writing directly to Health Connect; Hakari reads either source
-   the same way.
+   the same way. Note it only records nights its own Wear app tracks —
+   it cannot import sleep history the watch logged for Fitbit/Google.
 
 Once data flows, Hakari persists daily sleep/energy in an encrypted Hive
 box and (like weight entries) backs each day up to your relays as a
