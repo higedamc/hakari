@@ -8,7 +8,7 @@ name: Hakari
 summary: Privacy-first weight & body composition logger with encrypted Nostr backup
 
 description: |
-  Hakari (秤) is a privacy-first weight and body-composition logger.
+  Hakari is a privacy-first weight and body-composition logger.
   Your measurements never touch a vendor cloud: they live encrypted on
   your device and back up to your own Nostr relays, NIP-44 encrypted so
   relays only ever see ciphertext.
