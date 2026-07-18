@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -37,6 +36,7 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "org.lekt.hakari"
@@ -52,10 +52,18 @@ android {
     // Cargokit copies lib<name>.so into build/app/jniLibs/<variant>/<abi>/.
     // Newer AGP ignores sourceSet srcDirs added lazily by the cargokit
     // plugin, so register them statically here.
+    // AGP 9 rejects Provider instances in the SourceSet API, so resolve
+    // the directories eagerly (buildDirectory is already final here).
     sourceSets {
-        getByName("debug") { jniLibs.srcDir(layout.buildDirectory.dir("jniLibs/debug")) }
-        getByName("profile") { jniLibs.srcDir(layout.buildDirectory.dir("jniLibs/profile")) }
-        getByName("release") { jniLibs.srcDir(layout.buildDirectory.dir("jniLibs/release")) }
+        getByName("debug") {
+            jniLibs.srcDir(layout.buildDirectory.dir("jniLibs/debug").get().asFile)
+        }
+        getByName("profile") {
+            jniLibs.srcDir(layout.buildDirectory.dir("jniLibs/profile").get().asFile)
+        }
+        getByName("release") {
+            jniLibs.srcDir(layout.buildDirectory.dir("jniLibs/release").get().asFile)
+        }
     }
 
     signingConfigs {
