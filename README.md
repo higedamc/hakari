@@ -1,4 +1,4 @@
-# Hakari（秤）
+# Hakari
 
 Privacy-first weight & body-composition logger — **Flutter × Rust FFI**, Nostr-native.
 
