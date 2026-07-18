@@ -50,6 +50,11 @@ jobs:
 
   gitleaks:
     runs-on: ubuntu-latest
+    # Dependabot-triggered runs get a read-only GITHUB_TOKEN, which makes
+    # gitleaks-action's PR-summary API call fail (false negative CI red).
+    # Dependabot never introduces our secrets; push/PR runs by humans
+    # still scan the full history.
+    if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v4
         with:
