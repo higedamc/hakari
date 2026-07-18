@@ -58,8 +58,6 @@ images:
   - screenshots/04_add_entry.png
   - screenshots/05_scale_scan.png
   - screenshots/06_settings_privacy.png
-  - screenshots/07_relay_status.png
-  - screenshots/08_home_synced.png
 
 release_notes: CHANGELOG.md
 
