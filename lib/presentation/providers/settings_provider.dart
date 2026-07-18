@@ -18,7 +18,7 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<AppSettings> _update(
     AppSettings Function(AppSettings current) change,
   ) async {
-    final current = state.valueOrNull ?? await _repo.load();
+    final current = state.value ?? await _repo.load();
     final next = change(current);
     await _repo.save(next);
     state = AsyncData(next);

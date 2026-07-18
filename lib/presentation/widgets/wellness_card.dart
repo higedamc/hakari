@@ -12,7 +12,7 @@ class WellnessCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final readiness = ref.watch(readinessProvider).valueOrNull;
+    final readiness = ref.watch(readinessProvider).value;
     if (readiness == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
