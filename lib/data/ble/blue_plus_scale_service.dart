@@ -146,7 +146,13 @@ class BluePlusScaleService implements ScaleService {
         final device = BluetoothDevice.fromId(deviceId);
         _device = device;
 
-        await device.connect(timeout: connectTimeout);
+        // License.nonprofit: Hakari is a personal, free, non-commercial
+        // app — the FlutterBluePlus License grants BSD-like terms for
+        // this use (see the package LICENSE).
+        await device.connect(
+          timeout: connectTimeout,
+          license: License.nonprofit,
+        );
 
         // Close the measurement stream when the scale disconnects on its own
         // (typical: scales power down shortly after a measurement).
