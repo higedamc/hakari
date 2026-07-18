@@ -16,9 +16,8 @@ class HttpHealthPlanetService implements HealthPlanetService {
   HttpHealthPlanetService({FlutterSecureStorage? storage})
     : _storage =
           storage ??
-          const FlutterSecureStorage(
-            aOptions: AndroidOptions(encryptedSharedPreferences: true),
-          );
+          // v10+: Keystore-backed by default; legacy data auto-migrates.
+          const FlutterSecureStorage();
 
   static const String _host = 'www.healthplanet.jp';
   static const String _accessTokenKey = 'hp_access_token';
