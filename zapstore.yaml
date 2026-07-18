@@ -1,5 +1,9 @@
 repository: https://github.com/higedamc/hakari
 
+# Publisher pubkey — the Zapstore relay fetches this file and whitelists
+# the signer when it matches (first-publish verification).
+pubkey: npub16lrdq99ng2q4hg5ufre5f8j0qpealp8544vq4ctn2wqyrf4tk6uqn8mfeq
+
 name: Hakari
 summary: Privacy-first weight & body composition logger with encrypted Nostr backup
 
