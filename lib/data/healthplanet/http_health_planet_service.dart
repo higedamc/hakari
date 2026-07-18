@@ -23,18 +23,36 @@ class HttpHealthPlanetService implements HealthPlanetService {
   static const String _accessTokenKey = 'hp_access_token';
   static const String _refreshTokenKey = 'hp_refresh_token';
   static const String _clientSecretKey = 'hp_client_secret';
+  static const String _clientIdKey = 'hp_client_id';
   static const Duration _timeout = Duration(seconds: 20);
 
   final FlutterSecureStorage _storage;
   final Uuid _uuid = const Uuid();
 
   @override
-  Uri authorizationUrl() => Uri.https(_host, '/oauth/auth', {
-    'client_id': HealthPlanetConfig.clientId,
+  Future<Uri> authorizationUrl() async => Uri.https(_host, '/oauth/auth', {
+    'client_id': await clientId(),
     'redirect_uri': HealthPlanetConfig.redirectUri,
     'scope': 'innerscan',
     'response_type': 'code',
   });
+
+  @override
+  Future<String> clientId() async {
+    final stored = await _storage.read(key: _clientIdKey);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    return HealthPlanetConfig.clientId;
+  }
+
+  @override
+  Future<void> setClientId(String clientId) async {
+    final trimmed = clientId.trim();
+    if (trimmed.isEmpty) {
+      await _storage.delete(key: _clientIdKey);
+      return;
+    }
+    await _storage.write(key: _clientIdKey, value: trimmed);
+  }
 
   @override
   Future<bool> hasClientSecret() async => (await _clientSecret()).isNotEmpty;
@@ -76,7 +94,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
       throw const HealthPlanetFailure('The authorization code is empty.');
     }
     final body = await _postForm('/oauth/token', {
-      'client_id': HealthPlanetConfig.clientId,
+      'client_id': await clientId(),
       'client_secret': secret,
       'redirect_uri': HealthPlanetConfig.redirectUri,
       'code': trimmed,
@@ -168,7 +186,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
       );
     }
     final body = await _postForm('/oauth/token', {
-      'client_id': HealthPlanetConfig.clientId,
+      'client_id': await clientId(),
       'client_secret': secret,
       'redirect_uri': HealthPlanetConfig.redirectUri,
       'refresh_token': refresh,

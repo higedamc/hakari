@@ -3,6 +3,22 @@
 All notable changes to Hakari are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.2] - 2026-07-18
+
+### Added
+- Health Planet works for every user: the first-link dialog now takes
+  your own developer Client ID alongside the secret (both Keystore-only).
+
+### Changed
+- **BREAKING (carried from 0.4.1): package renamed to
+  `jp.godzhigella.hakari`** — installs of the old `org.lekt.hakari` do
+  not update in place; restore data via "Fetch my data from relays".
+
+## [0.4.1] - 2026-07-18
+
+### Changed
+- Package renamed from `org.lekt.hakari` to `jp.godzhigella.hakari`.
+
 ## [0.4.0] - 2026-07-18
 
 ### Changed

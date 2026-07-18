@@ -307,12 +307,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _linkHealthPlanet() async {
     final service = ref.read(healthPlanetServiceProvider);
-    // Straight to the consent page — the client secret is only needed at
-    // token-exchange time, so it is asked for in the same dialog as the
-    // code (first link only) and kept on-device (Keystore-backed).
-    bool needSecret;
+    // First link: collect the user's own Health Planet developer
+    // credentials (client id feeds the consent URL, so this must happen
+    // before the browser opens). Later links go straight to the browser.
     try {
-      needSecret = !await service.hasClientSecret();
+      if (!await service.hasClientSecret()) {
+        final creds = await _showHealthPlanetCredentialsDialog(
+          initialClientId: await service.clientId(),
+        );
+        if (creds == null || creds.secret.trim().isEmpty) return;
+        await service.setClientId(creds.clientId);
+        await service.setClientSecret(creds.secret);
+      }
     } on Failure catch (f) {
       showAppSnackBar(f.message);
       return;
@@ -320,7 +326,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     try {
       await launchUrl(
-        service.authorizationUrl(),
+        await service.authorizationUrl(),
         mode: LaunchMode.externalApplication,
       );
     } catch (e) {
@@ -328,15 +334,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return;
     }
     if (!mounted) return;
-    final result = await _showHealthPlanetLinkDialog(askSecret: needSecret);
-    if (result == null || result.code.trim().isEmpty) return;
+    final code = await _showHealthPlanetCodeDialog();
+    if (code == null || code.trim().isEmpty) return;
     setState(() => _healthPlanetBusy = true);
     try {
-      final secret = result.secret;
-      if (secret != null && secret.trim().isNotEmpty) {
-        await service.setClientSecret(secret);
-      }
-      await service.linkWithCode(result.code);
+      await service.linkWithCode(code);
       if (mounted) setState(() => _healthPlanetLinked = true);
       showAppSnackBar('Health Planet linked.');
     } on Failure catch (f) {
@@ -346,12 +348,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<({String? secret, String code})?> _showHealthPlanetLinkDialog({
-    required bool askSecret,
-  }) {
+  Future<({String clientId, String secret})?>
+  _showHealthPlanetCredentialsDialog({required String initialClientId}) {
+    final idCtrl = TextEditingController(text: initialClientId);
     final secretCtrl = TextEditingController();
+    return showDialog<({String clientId, String secret})>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Health Planet credentials'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Register an application on the Health Planet developer '
+              'page (healthplanet.jp) and enter its credentials. They '
+              'are stored only on this device (Keystore) — entered '
+              'once.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: idCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Client ID',
+                helperText: 'xxxx.yyyy.apps.healthplanet.jp',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: secretCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Client secret'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop((clientId: idCtrl.text, secret: secretCtrl.text)),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    ).whenComplete(() {
+      idCtrl.dispose();
+      secretCtrl.dispose();
+    });
+  }
+
+  Future<String?> _showHealthPlanetCodeDialog() {
     final codeCtrl = TextEditingController();
-    return showDialog<({String? secret, String code})>(
+    return showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Link Health Planet'),
@@ -372,20 +424,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 labelText: 'Authorization code',
               ),
             ),
-            if (askSecret) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: secretCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Client secret (first link only)',
-                  helperText:
-                      'From the Health Planet developer page. '
-                      'Stored only on this device.',
-                  helperMaxLines: 2,
-                ),
-              ),
-            ],
           ],
         ),
         actions: [
@@ -394,18 +432,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop((
-              secret: askSecret ? secretCtrl.text : null,
-              code: codeCtrl.text,
-            )),
+            onPressed: () => Navigator.of(dialogContext).pop(codeCtrl.text),
             child: const Text('Link'),
           ),
         ],
       ),
-    ).whenComplete(() {
-      secretCtrl.dispose();
-      codeCtrl.dispose();
-    });
+    ).whenComplete(codeCtrl.dispose);
   }
 
   Future<void> _importFromHealthPlanet({required bool fullHistory}) async {
