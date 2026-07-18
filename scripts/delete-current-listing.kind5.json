@@ -1,0 +1,35 @@
+{
+  "kind": 5,
+  "created_at": 1784364835,
+  "tags": [
+    [
+      "a",
+      "32267:d7c6d014b342815ba29c48f3449e4f0073df84f4ad580ae173538041a6abb6b8:jp.godzhigella.hakari"
+    ],
+    [
+      "a",
+      "30063:d7c6d014b342815ba29c48f3449e4f0073df84f4ad580ae173538041a6abb6b8:jp.godzhigella.hakari@0.4.2"
+    ],
+    [
+      "e",
+      "bdbe0ddff1290fb19dd26cadd7c5188065c90060491afc64290a68c6952c4f44"
+    ],
+    [
+      "e",
+      "bf3d3a36aae6553ad04c25e1d975aa31ab545d23a25774ed94dd2c11d9205f47"
+    ],
+    [
+      "k",
+      "32267"
+    ],
+    [
+      "k",
+      "30063"
+    ],
+    [
+      "k",
+      "3063"
+    ]
+  ],
+  "content": "Temporarily unpublishing jp.godzhigella.hakari pending a fix; will republish."
+}

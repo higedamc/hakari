@@ -1,0 +1,36 @@
+{
+  "kind": 5,
+  "pubkey": "d7c6d014b342815ba29c48f3449e4f0073df84f4ad580ae173538041a6abb6b8",
+  "created_at": 1784359662,
+  "tags": [
+    [
+      "a",
+      "32267:d7c6d014b342815ba29c48f3449e4f0073df84f4ad580ae173538041a6abb6b8:org.lekt.hakari"
+    ],
+    [
+      "a",
+      "30063:d7c6d014b342815ba29c48f3449e4f0073df84f4ad580ae173538041a6abb6b8:org.lekt.hakari@0.4.0"
+    ],
+    [
+      "e",
+      "a47cfb3de5ba49bb830ce8fb79835ef8272871f8ace349cde0b26b3fc67fc544"
+    ],
+    [
+      "e",
+      "9dab21cba70ba90002fed12769a52094929b184e7fcbc211c97ebef340b494aa"
+    ],
+    [
+      "k",
+      "32267"
+    ],
+    [
+      "k",
+      "30063"
+    ],
+    [
+      "k",
+      "3063"
+    ]
+  ],
+  "content": "App id renamed to jp.godzhigella.hakari; this listing (org.lekt.hakari) is superseded."
+}

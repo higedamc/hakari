@@ -8,7 +8,10 @@
 class HealthPlanetConfig {
   HealthPlanetConfig._();
 
-  static const String clientId = '49084.yFiYj2HGAd.apps.healthplanet.jp';
+  /// No built-in client id: each user registers their own Health Planet
+  /// application and enters its credentials in the link dialog. Personal
+  /// builds may inject one with --dart-define=HP_CLIENT_ID=...
+  static const String clientId = String.fromEnvironment('HP_CLIENT_ID');
 
   static const String clientSecret = String.fromEnvironment('HP_CLIENT_SECRET');
 

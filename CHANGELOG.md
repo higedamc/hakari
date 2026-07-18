@@ -3,6 +3,20 @@
 All notable changes to Hakari are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.3] - 2026-07-18
+
+### Fixed
+- The Health Planet link dialog no longer pre-fills a built-in client ID
+  that could not work with anyone else's secret; every user enters their
+  own developer credentials (personal builds: --dart-define=HP_CLIENT_ID).
+
+## [0.4.3] - 2026-07-18
+
+### Fixed
+- The Health Planet link dialog no longer pre-fills a built-in client ID
+  that could not work with anyone else's secret; every user enters their
+  own developer credentials (personal builds: --dart-define=HP_CLIENT_ID).
+
 ## [0.4.2] - 2026-07-18
 
 ### Added
