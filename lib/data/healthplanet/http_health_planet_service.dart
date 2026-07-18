@@ -31,11 +31,23 @@ class HttpHealthPlanetService implements HealthPlanetService {
 
   @override
   Future<Uri> authorizationUrl() async => Uri.https(_host, '/oauth/auth', {
-    'client_id': await clientId(),
+    'client_id': await _requireClientId(),
     'redirect_uri': HealthPlanetConfig.redirectUri,
     'scope': 'innerscan',
     'response_type': 'code',
   });
+
+  Future<String> _requireClientId() async {
+    final id = await clientId();
+    if (id.isEmpty) {
+      throw const HealthPlanetFailure(
+        'No Health Planet client ID is set. Register an application on '
+        'the Health Planet developer page and enter its credentials '
+        'when linking.',
+      );
+    }
+    return id;
+  }
 
   @override
   Future<String> clientId() async {
@@ -94,7 +106,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
       throw const HealthPlanetFailure('The authorization code is empty.');
     }
     final body = await _postForm('/oauth/token', {
-      'client_id': await clientId(),
+      'client_id': await _requireClientId(),
       'client_secret': secret,
       'redirect_uri': HealthPlanetConfig.redirectUri,
       'code': trimmed,
@@ -186,7 +198,7 @@ class HttpHealthPlanetService implements HealthPlanetService {
       );
     }
     final body = await _postForm('/oauth/token', {
-      'client_id': await clientId(),
+      'client_id': await _requireClientId(),
       'client_secret': secret,
       'redirect_uri': HealthPlanetConfig.redirectUri,
       'refresh_token': refresh,

@@ -315,7 +315,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         final creds = await _showHealthPlanetCredentialsDialog(
           initialClientId: await service.clientId(),
         );
-        if (creds == null || creds.secret.trim().isEmpty) return;
+        if (creds == null) return;
+        if (creds.clientId.trim().isEmpty || creds.secret.trim().isEmpty) {
+          showAppSnackBar('Both the client ID and secret are required.');
+          return;
+        }
         await service.setClientId(creds.clientId);
         await service.setClientSecret(creds.secret);
       }
