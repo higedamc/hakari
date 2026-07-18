@@ -1,4 +1,4 @@
-package org.lekt.hakari
+package jp.godzhigella.hakari
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -12,7 +12,7 @@ import io.flutter.plugin.common.MethodChannel
 
 /**
  * Hosts the NIP-55 (Amber external signer) bridge for the
- * `org.lekt.hakari/amber` MethodChannel.
+ * `jp.godzhigella.hakari/amber` MethodChannel.
  *
  * Foreground flow: launch Amber (com.greenart7c3.nostrsigner) via
  * ACTION_VIEW on a `nostrsigner:` URI with startActivityForResult, keep the
@@ -27,7 +27,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterFragmentActivity() {
     companion object {
         private const val TAG = "MainActivity"
-        private const val AMBER_CHANNEL = "org.lekt.hakari/amber"
+        private const val AMBER_CHANNEL = "jp.godzhigella.hakari/amber"
         private const val AMBER_PACKAGE = "com.greenart7c3.nostrsigner"
         private const val APP_NAME = "hakari"
         private const val AMBER_REQUEST_CODE_BASE = 9200
