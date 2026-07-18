@@ -9,8 +9,9 @@ import '../entities/weight_entry.dart';
 abstract class HealthPlanetService {
   /// Where the user grants access (opened in an external browser). After
   /// approval Health Planet's success page displays an authorization
-  /// code which the user pastes back into the app.
-  Uri authorizationUrl();
+  /// code which the user pastes back into the app. Async because the
+  /// client id may come from on-device storage.
+  Future<Uri> authorizationUrl();
 
   /// Exchanges a pasted authorization code (valid 10 minutes) for tokens
   /// and persists them securely.
@@ -23,6 +24,13 @@ abstract class HealthPlanetService {
   /// Stores the OAuth client secret on-device (Keystore-backed). Lets
   /// the user paste it once instead of embedding it in the APK.
   Future<void> setClientSecret(String secret);
+
+  /// Stores the user's own Health Planet client id (from their developer
+  /// registration). Empty/blank keeps the built-in default.
+  Future<void> setClientId(String clientId);
+
+  /// The effective client id (stored override or built-in default).
+  Future<String> clientId();
 
   /// Whether tokens are stored (does not guarantee they are still valid;
   /// [fetchEntries] refreshes or fails with [HealthPlanetFailure]).
