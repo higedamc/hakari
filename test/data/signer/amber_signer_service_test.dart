@@ -8,7 +8,7 @@ import 'package:hakari/domain/failures/failures.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channel = MethodChannel('org.lekt.hakari/amber-test');
+  const channel = MethodChannel('jp.godzhigella.hakari/amber-test');
   const hexPubkey =
       '3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d';
 

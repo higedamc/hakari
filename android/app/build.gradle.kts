@@ -22,7 +22,7 @@ extensions.configure<Any>("cargokit") {
 }
 
 android {
-    namespace = "org.lekt.hakari"
+    namespace = "jp.godzhigella.hakari"
     compileSdk = flutter.compileSdkVersion
     // Pinned to match rust/.cargo/config.toml Android linker paths.
     ndkVersion = "28.0.13004108"
@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "org.lekt.hakari"
+        applicationId = "jp.godzhigella.hakari"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // health (Health Connect) requires API 26+.

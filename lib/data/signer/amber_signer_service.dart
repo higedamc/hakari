@@ -24,7 +24,7 @@ import 'bech32.dart';
 /// - anything else                        -> [SignerFailure]
 class AmberSignerService implements SignerService {
   static const MethodChannel _defaultChannel = MethodChannel(
-    'org.lekt.hakari/amber',
+    'jp.godzhigella.hakari/amber',
   );
 
   final MethodChannel _channel;
