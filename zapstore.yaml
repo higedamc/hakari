@@ -1,0 +1,66 @@
+repository: https://github.com/higedamc/hakari
+
+name: Hakari
+summary: Privacy-first weight & body composition logger with encrypted Nostr backup
+
+description: |
+  Hakari (秤) is a privacy-first weight and body-composition logger.
+  Your measurements never touch a vendor cloud: they live encrypted on
+  your device and back up to your own Nostr relays, NIP-44 encrypted so
+  relays only ever see ciphertext.
+
+  ## Features
+  - Standard Bluetooth GATT scales (Weight Scale 0x181D / Body
+    Composition 0x181B) work fully offline — step on, reading appears
+  - Full TANITA-style body composition: body fat %, water %, muscle
+    mass, visceral fat, bone mass, BMR, metabolic age
+  - TANITA Health Planet cloud import (official API) with full-history
+    paging for TANITA scale owners
+  - Health Connect / Apple Health sync (weight & body fat read/write)
+  - Workout-readiness & fat-loss-efficiency card from your sleep and
+    activity (research-based, transparent heuristic — tap ⓘ for the
+    methodology)
+  - Nostr backup: kind 1351 weight events (NIP-101h) plus encrypted
+    kind 30078 full-entry backups; restore from relays on any device
+  - Amber (NIP-55) signing — the app never sees your key; silent
+    ContentProvider signing under "always approve"
+  - Tor support via Orbot SOCKS5 proxy
+  - Encrypted local storage (Keystore-backed), WeightLogger-compatible
+    CSV / JSON export
+  - No telemetry. No analytics. No accounts.
+
+tags:
+  - health
+  - fitness
+  - weight
+  - nostr
+  - privacy
+  - encrypted
+  - amber
+  - decentralized
+  - bluetooth
+  - health-connect
+
+license: MIT
+
+website: https://github.com/higedamc/hakari
+
+icon: assets/icon/icon.png
+
+images:
+  - screenshots/01_onboarding_welcome.png
+  - screenshots/02_onboarding_privacy.png
+  - screenshots/03_home.png
+  - screenshots/04_add_entry.png
+  - screenshots/05_scale_scan.png
+  - screenshots/06_settings_privacy.png
+  - screenshots/07_relay_status.png
+  - screenshots/08_home_synced.png
+
+release_notes: CHANGELOG.md
+
+supported_nips:
+  - "01"
+  - "44"
+  - "55"
+  - "78"
