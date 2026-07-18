@@ -293,7 +293,7 @@ pub fn init_client(mode: ClientMode, relays: Vec<String>, tor: TorModeFfi) -> Re
 
         // Build connection options (Orbot -> SOCKS5 proxy for ALL relays).
         let opts = match tor.kind {
-            TorModeKind::Disabled => Options::new(),
+            TorModeKind::Disabled => ClientOptions::new(),
             TorModeKind::Orbot => {
                 let proxy_url = tor
                     .proxy_url
@@ -306,7 +306,7 @@ pub fn init_client(mode: ClientMode, relays: Vec<String>, tor: TorModeFfi) -> Re
                 // disables Tor. The explicit Connection proxy below covers
                 // the only network stack in this crate.
                 let connection = Connection::new().proxy(addr).target(ConnectionTarget::All);
-                Options::new().connection(connection)
+                ClientOptions::new().connection(connection)
             }
         };
 
@@ -471,6 +471,9 @@ pub fn build_unsigned_weight_event(
     let tags = build_weight_tags(&entry, encrypted, &pk);
     let mut unsigned = EventBuilder::new(Kind::Custom(KIND_WEIGHT), content)
         .tags(tags)
+        // The encrypted variant self-p-tags as the NIP-44 recipient hint;
+        // nostr 0.39+ strips self tags unless explicitly allowed.
+        .allow_self_tagging()
         .custom_created_at(Timestamp::from(entry.recorded_at_unix.max(0) as u64))
         .build(pk);
     unsigned.ensure_id();
@@ -526,7 +529,7 @@ async fn send_event_counting(
     timeout: Duration,
     event: Event,
 ) -> Result<(u32, u32)> {
-    match tokio::time::timeout(timeout, client.send_event(event)).await {
+    match tokio::time::timeout(timeout, client.send_event(&event)).await {
         Ok(Ok(output)) => Ok((output.success.len() as u32, output.failed.len() as u32)),
         Ok(Err(e)) => Err(anyhow!("Failed to send event: {e}")),
         Err(_) => Err(anyhow!(
@@ -562,6 +565,7 @@ pub fn publish_weight_entry(entry: FfiWeightEntry, encrypt: bool) -> Result<Send
         };
         let weight_event = EventBuilder::new(Kind::Custom(KIND_WEIGHT), content)
             .tags(build_weight_tags(&entry, encrypt, &own_pk))
+            .allow_self_tagging()
             .custom_created_at(Timestamp::from(entry.recorded_at_unix.max(0) as u64))
             .sign(keys)
             .await
@@ -667,14 +671,18 @@ pub fn fetch_health_events(
         let hc = guard
             .as_ref()
             .ok_or_else(|| anyhow!("Nostr client not initialized"))?;
-        let events = hc
+        // 0.44: fetch_events takes a single Filter and a hard timeout.
+        let mut events = hc
             .client
-            .fetch_events(
-                vec![weight_filter, backup_filter],
-                Some(Duration::from_secs(10)),
-            )
+            .fetch_events(weight_filter, Duration::from_secs(10))
             .await
             .map_err(|e| anyhow!("Failed to fetch events from relays: {e}"))?;
+        let backup_events = hc
+            .client
+            .fetch_events(backup_filter, Duration::from_secs(10))
+            .await
+            .map_err(|e| anyhow!("Failed to fetch events from relays: {e}"))?;
+        events.extend(backup_events);
 
         Ok(events
             .into_iter()
@@ -683,7 +691,7 @@ pub fn fetch_health_events(
                 kind: event.kind.as_u16(),
                 // Clamp: a hostile relay can claim absurd timestamps that
                 // would wrap negative in a plain `as i64` cast.
-                created_at: i64::try_from(event.created_at.as_u64()).unwrap_or(i64::MAX),
+                created_at: i64::try_from(event.created_at.as_secs()).unwrap_or(i64::MAX),
                 content: event.content.clone(),
                 tags: event
                     .tags
