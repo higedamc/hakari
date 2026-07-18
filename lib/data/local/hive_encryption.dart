@@ -15,9 +15,10 @@ class HiveEncryption {
   HiveEncryption._();
 
   static const String _keyName = 'hive_encryption_key_v1';
-  static const FlutterSecureStorage _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  // v10+: Keystore-backed custom ciphers by default; existing
+  // EncryptedSharedPreferences data migrates automatically on first
+  // access.
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   /// Loads (or creates and stores) the box encryption key.
   static Future<HiveAesCipher> getCipher() async {
