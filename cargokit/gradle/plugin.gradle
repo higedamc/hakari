@@ -39,6 +39,15 @@ abstract class CargoKitBuildTask extends DefaultTask {
     @Input
     List<String> targetPlatforms
 
+    // Gradle 9 removed Project.exec inside task actions; use the
+    // injected ExecOperations service instead.
+    private final org.gradle.process.ExecOperations execOperations
+
+    @javax.inject.Inject
+    CargoKitBuildTask(org.gradle.process.ExecOperations execOperations) {
+        this.execOperations = execOperations
+    }
+
     @TaskAction
     def build() {
         if (project.cargokit.manifestDir == null) {
@@ -57,12 +66,12 @@ abstract class CargoKitBuildTask extends DefaultTask {
         def rootProjectDir = project.rootProject.projectDir
 
         if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
-            project.exec {
+            execOperations.exec {
                 commandLine 'chmod', '+x', path
             }
         }
 
-        project.exec {
+        execOperations.exec {
             executable path
             args "build-gradle"
             environment "CARGOKIT_ROOT_PROJECT_DIR", rootProjectDir
