@@ -21,7 +21,7 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     // AGP 9+ ships built-in Kotlin; the kotlin-android plugin must not
     // be applied anymore.
-    id("com.android.application") version "9.3.0" apply false
+    id("com.android.application") version "9.3.2" apply false
 }
 
 include(":app")
