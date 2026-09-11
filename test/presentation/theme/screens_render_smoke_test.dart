@@ -69,6 +69,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
         expect(tester.takeException(), isNull);
         expect(find.byType(ListTile), findsWidgets);
+        // The first switch sits below the default test viewport now that
+        // Body profile precedes it, and a plain ListView does not build
+        // off-screen children: scroll to it rather than widen the viewport.
+        await tester.scrollUntilVisible(
+          find.text('Route through Orbot (SOCKS5)'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         expect(find.byType(SwitchListTile), findsWidgets);
       });
 
