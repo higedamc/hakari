@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/di/providers.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/repositories/settings_repository.dart';
+import '../../domain/services/body_metrics.dart';
 
 /// Loads, exposes and persists [AppSettings].
 ///
@@ -75,6 +76,43 @@ class SettingsController extends AsyncNotifier<AppSettings> {
 
   Future<AppSettings> setUseMetricUnits(bool value) =>
       _update((s) => s.copyWith(useMetricUnits: value));
+
+  // Body profile ---------------------------------------------------------
+
+  /// Sets the height the user typed; `null` clears it (and lets the next
+  /// Health Planet sync fill it again). Implausible values are ignored
+  /// without a save.
+  Future<AppSettings> setHeightCm(double? cm) async {
+    if (cm == null) return _update((s) => s.copyWith(clearHeightCm: true));
+    if (!BodyProfileLimits.isPlausibleHeightCm(cm)) {
+      return state.value ?? await _repo.load();
+    }
+    return _update((s) => s.copyWith(heightCm: cm));
+  }
+
+  /// Sets the goal weight; `null` clears it. Implausible values are
+  /// ignored without a save.
+  Future<AppSettings> setGoalWeightKg(double? kg) async {
+    if (kg == null) {
+      return _update((s) => s.copyWith(clearGoalWeightKg: true));
+    }
+    if (!BodyProfileLimits.isPlausibleWeightKg(kg)) {
+      return state.value ?? await _repo.load();
+    }
+    return _update((s) => s.copyWith(goalWeightKg: kg));
+  }
+
+  /// Adopts a height reported by a Health Planet sync, but **only when no
+  /// height is stored yet**. A value the user entered always wins and is
+  /// never overwritten by sync. Returns the (possibly unchanged) settings.
+  Future<AppSettings> adoptFetchedHeightCm(double? cm) async {
+    final current = state.value ?? await _repo.load();
+    if (current.heightCm != null ||
+        !BodyProfileLimits.isPlausibleHeightCm(cm)) {
+      return current;
+    }
+    return _update((s) => s.heightCm != null ? s : s.copyWith(heightCm: cm));
+  }
 }
 
 final settingsProvider = AsyncNotifierProvider<SettingsController, AppSettings>(
