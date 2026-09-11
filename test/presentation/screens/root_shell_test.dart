@@ -82,6 +82,31 @@ void main() {
         );
       });
 
+      testWidgets('system back from a secondary tab returns to Home; '
+          'from Home it pops', (tester) async {
+        await tester.pumpWidget(screenHost(const RootShell(), brightness));
+        await tester.pump(const Duration(milliseconds: 300));
+
+        for (final tab in ['Stats', 'Settings']) {
+          await tester.tap(find.text(tab));
+          await tester.pumpAndSettle();
+          expect(find.byType(HomeScreen), findsNothing);
+
+          final handled = await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+          expect(handled, isTrue, reason: 'back from $tab must be consumed');
+          expect(find.byType(RootShell), findsOneWidget);
+          expect(find.byType(HomeScreen), findsOneWidget);
+          expect(find.byIcon(Icons.home), findsOneWidget);
+        }
+
+        // On Home the pop bubbles up to the system (app exit).
+        final handled = await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(handled, isFalse, reason: 'back from Home must leave the app');
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('body sits above the bar: extendBody false, no bottom '
           'inset', (tester) async {
         // 800px tall view with a 34px bottom safe area (iPhone home bar).
