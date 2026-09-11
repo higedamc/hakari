@@ -32,7 +32,7 @@ void main() {
         await tester.tap(find.text('Stats'));
         await tester.pumpAndSettle();
         expect(find.byType(StatsScreen), findsOneWidget);
-        expect(find.text('Statistics coming soon'), findsOneWidget);
+        expect(find.widgetWithText(AppBar, 'Stats'), findsOneWidget);
         expect(find.byIcon(Icons.insights), findsOneWidget);
 
         await tester.tap(find.text('Settings'));
