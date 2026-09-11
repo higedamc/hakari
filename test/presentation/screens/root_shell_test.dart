@@ -38,7 +38,7 @@ void main() {
         await tester.tap(find.text('Settings'));
         await tester.pumpAndSettle();
         expect(find.byType(SettingsScreen), findsOneWidget);
-        expect(find.byType(SwitchListTile), findsWidgets);
+        expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
         expect(find.byIcon(Icons.settings), findsOneWidget);
 
         await tester.tap(find.text('Home'));
