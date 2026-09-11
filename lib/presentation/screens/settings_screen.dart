@@ -12,6 +12,7 @@ import '../../domain/services/nostr_service.dart';
 import '../providers/nostr_sync_provider.dart';
 import '../providers/relay_status_provider.dart';
 import '../providers/settings_provider.dart';
+import '../theme/hakari_tokens.dart';
 import '../widgets/app_messenger.dart';
 import '../widgets/section_header.dart';
 
@@ -370,7 +371,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'are stored only on this device (Keystore) — entered '
               'once.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: HakariSpacing.md),
             TextField(
               controller: idCtrl,
               decoration: const InputDecoration(
@@ -378,7 +379,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 helperText: 'xxxx.yyyy.apps.healthplanet.jp',
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: HakariSpacing.md),
             TextField(
               controller: secretCtrl,
               obscureText: true,
@@ -420,7 +421,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'an authorization code on the page. Copy it and paste it '
               'here within 10 minutes.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: HakariSpacing.md),
             TextField(
               controller: codeCtrl,
               autofocus: true,
@@ -556,38 +557,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              error is Failure
-                  ? error.message
-                  : 'Failed to load settings: $error',
-              textAlign: TextAlign.center,
-            ),
-          ),
+        error: (error, _) => _EmptyState(
+          icon: Icons.error_outline,
+          message: error is Failure
+              ? error.message
+              : 'Failed to load settings: $error',
         ),
         data: (settings) => ListView(
-          padding: const EdgeInsets.only(bottom: 32),
+          padding: const EdgeInsets.fromLTRB(
+            HakariSpacing.page,
+            0,
+            HakariSpacing.page,
+            HakariSpacing.xl,
+          ),
           children: [
-            ..._identitySection(settings),
-            ..._relaySection(settings),
-            ..._torSection(settings),
-            ..._publishingSection(settings),
-            ..._healthSection(settings),
-            ..._healthPlanetSection(),
-            ..._exportSection(),
+            _SettingsGroup(
+              title: 'Identity',
+              children: _identityRows(settings),
+            ),
+            _SettingsGroup(title: 'Relays', children: _relayRows(settings)),
+            _SettingsGroup(title: 'Privacy', children: _torRows(settings)),
+            _SettingsGroup(
+              title: 'Publishing',
+              children: _publishingRows(settings),
+            ),
+            _SettingsGroup(title: _healthStoreName, children: _healthRows()),
+            _SettingsGroup(
+              title: 'TANITA Health Planet',
+              children: _healthPlanetRows(),
+            ),
+            _SettingsGroup(title: 'Export', children: _exportRows()),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _identitySection(AppSettings settings) {
+  List<Widget> _identityRows(AppSettings settings) {
     final pubkey = settings.pubkeyHex;
-    return [
-      const SectionHeader('Identity'),
-      if (pubkey != null)
+    if (pubkey != null) {
+      return [
         ListTile(
           leading: const Icon(Icons.key_outlined),
           title: Text(_truncateMiddle(pubkey)),
@@ -600,26 +609,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: _logout,
             child: const Text('Log out'),
           ),
-        )
-      else
-        ListTile(
-          leading: const Icon(Icons.person_off_outlined),
-          title: const Text('Not logged in'),
-          subtitle: const Text('Log in to publish your data to Nostr.'),
-          trailing: FilledButton.tonal(
-            onPressed: _loginWithAmber,
-            child: const Text('Login with Amber'),
-          ),
         ),
+      ];
+    }
+    return [
+      const ListTile(
+        leading: Icon(Icons.person_off_outlined),
+        title: Text('Not logged in'),
+        subtitle: Text('Log in to publish your data to Nostr.'),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          HakariSpacing.lg,
+          0,
+          HakariSpacing.lg,
+          HakariSpacing.lg,
+        ),
+        child: FilledButton.tonalIcon(
+          onPressed: _loginWithAmber,
+          icon: const Icon(Icons.login),
+          label: const Text('Login with Amber'),
+        ),
+      ),
     ];
   }
 
-  List<Widget> _relaySection(AppSettings settings) {
+  List<Widget> _relayRows(AppSettings settings) {
     return [
-      const SectionHeader('Relays'),
+      if (settings.relays.isEmpty)
+        const _EmptyState(
+          icon: Icons.dns_outlined,
+          message: 'No relays configured',
+          compact: true,
+        ),
       for (final relay in settings.relays)
         ListTile(
-          dense: true,
           leading: const Icon(Icons.dns_outlined),
           title: Text(relay),
           trailing: IconButton(
@@ -629,16 +653,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(
+          HakariSpacing.lg,
+          HakariSpacing.sm,
+          HakariSpacing.lg,
+          HakariSpacing.lg,
+        ),
+        child: Wrap(
+          spacing: HakariSpacing.sm,
+          runSpacing: HakariSpacing.sm,
           children: [
-            TextButton.icon(
+            FilledButton.tonalIcon(
               onPressed: _showAddRelayDialog,
               icon: const Icon(Icons.add),
               label: const Text('Add relay'),
             ),
-            const SizedBox(width: 8),
-            TextButton(
+            OutlinedButton(
               onPressed: () =>
                   _updateAndApply((c) => c.resetRelaysToDefaults()),
               child: const Text('Reset to defaults'),
@@ -649,11 +679,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ];
   }
 
-  List<Widget> _torSection(AppSettings settings) {
+  List<Widget> _torRows(AppSettings settings) {
     final orbotEnabled = settings.torMode == TorMode.orbot;
     return [
-      const SectionHeader('Privacy'),
       SwitchListTile(
+        secondary: const Icon(Icons.shield_outlined),
         title: const Text('Route through Orbot (SOCKS5)'),
         subtitle: const Text('Requires Orbot running with SOCKS on port 9050'),
         value: orbotEnabled,
@@ -663,7 +693,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       if (orbotEnabled)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+            HakariSpacing.lg,
+            HakariSpacing.sm,
+            HakariSpacing.lg,
+            HakariSpacing.lg,
+          ),
           child: TextFormField(
             initialValue: settings.proxyUrl,
             keyboardType: TextInputType.url,
@@ -680,23 +715,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ];
   }
 
-  List<Widget> _publishingSection(AppSettings settings) {
+  List<Widget> _publishingRows(AppSettings settings) {
     final syncStatus = ref.watch(nostrSyncProvider);
     return [
-      const SectionHeader('Publishing'),
       SwitchListTile(
+        secondary: const Icon(Icons.lock_outline),
         title: const Text('Encrypt health data (NIP-44)'),
         subtitle: const Text('Self-encrypt events before publishing'),
         value: settings.encryptHealthEvents,
         onChanged: (v) => _updateOnly((c) => c.setEncryptHealthEvents(v)),
       ),
       SwitchListTile(
+        secondary: const Icon(Icons.cloud_upload_outlined),
         title: const Text('Auto-publish to Nostr'),
         subtitle: const Text('Publish each new entry to your relays'),
         value: settings.autoPublishToNostr,
         onChanged: (v) => _updateOnly((c) => c.setAutoPublishToNostr(v)),
       ),
       SwitchListTile(
+        secondary: const Icon(Icons.sync_outlined),
         title: Text('Auto-sync to $_healthStoreName'),
         subtitle: Text('Write each new entry to $_healthStoreName'),
         value: settings.autoSyncToHealth,
@@ -707,26 +744,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: const Text('Fetch my data from relays'),
         subtitle: const Text('Import your published entries'),
         trailing: syncStatus.isSyncing
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+            ? const _BusyIndicator()
             : const Icon(Icons.chevron_right),
         onTap: syncStatus.isSyncing
             ? null
             : () => ref.read(nostrSyncProvider.notifier).fetchFromNostr(),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(
+          HakariSpacing.lg,
+          HakariSpacing.sm,
+          HakariSpacing.lg,
+          HakariSpacing.lg,
+        ),
         child: _RelayStatusList(),
       ),
     ];
   }
 
-  List<Widget> _healthSection(AppSettings settings) {
+  List<Widget> _healthRows() {
     return [
-      SectionHeader(_healthStoreName),
       ListTile(
         leading: const Icon(Icons.favorite_outline),
         title: Text('Connect $_healthStoreName'),
@@ -734,19 +771,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'Weight & body fat (read/write), sleep & active energy '
           '(read-only)',
         ),
+        trailing: const Icon(Icons.chevron_right),
         onTap: _connectHealth,
       ),
       ListTile(
         leading: const Icon(Icons.download_outlined),
         title: Text('Import from $_healthStoreName (90 days)'),
         subtitle: const Text('Skips entries you already have'),
-        trailing: _importingHealth
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : null,
+        trailing: _importingHealth ? const _BusyIndicator() : null,
         onTap: _importingHealth ? null : _importFromHealth,
       ),
       ListTile(
@@ -756,93 +788,167 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'See whether sleep & energy reach the readiness card',
         ),
         trailing: _checkingWellness
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : null,
+            ? const _BusyIndicator()
+            : const Icon(Icons.chevron_right),
         onTap: _checkingWellness ? null : _checkWellnessData,
       ),
     ];
   }
 
-  List<Widget> _healthPlanetSection() {
-    final busyIndicator = _healthPlanetBusy
-        ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        : null;
-    return [
-      const SectionHeader('TANITA Health Planet'),
-      if (!_healthPlanetLinked)
+  List<Widget> _healthPlanetRows() {
+    final busyIndicator = _healthPlanetBusy ? const _BusyIndicator() : null;
+    if (!_healthPlanetLinked) {
+      return [
         ListTile(
           leading: const Icon(Icons.link),
           title: const Text('Link Health Planet'),
           subtitle: const Text(
             'Import TANITA scale measurements via the official cloud API',
           ),
-          trailing: busyIndicator,
+          trailing: busyIndicator ?? const Icon(Icons.chevron_right),
           onTap: _healthPlanetBusy ? null : _linkHealthPlanet,
-        )
-      else ...[
-        ListTile(
-          leading: const Icon(Icons.download_outlined),
-          title: const Text('Import from Health Planet (90 days)'),
-          subtitle: const Text('Skips entries you already have'),
-          trailing: busyIndicator,
-          onTap: _healthPlanetBusy
-              ? null
-              : () => _importFromHealthPlanet(fullHistory: false),
         ),
-        ListTile(
-          leading: const Icon(Icons.history),
-          title: const Text('Import full history'),
-          subtitle: const Text(
-            'Pages back through your entire Health Planet record',
-          ),
-          trailing: busyIndicator,
-          onTap: _healthPlanetBusy
-              ? null
-              : () => _importFromHealthPlanet(fullHistory: true),
+      ];
+    }
+    return [
+      ListTile(
+        leading: const Icon(Icons.download_outlined),
+        title: const Text('Import from Health Planet (90 days)'),
+        subtitle: const Text('Skips entries you already have'),
+        trailing: busyIndicator,
+        onTap: _healthPlanetBusy
+            ? null
+            : () => _importFromHealthPlanet(fullHistory: false),
+      ),
+      ListTile(
+        leading: const Icon(Icons.history),
+        title: const Text('Import full history'),
+        subtitle: const Text(
+          'Pages back through your entire Health Planet record',
         ),
-        ListTile(
-          leading: const Icon(Icons.link_off),
-          title: const Text('Unlink Health Planet'),
-          onTap: _healthPlanetBusy ? null : _unlinkHealthPlanet,
-        ),
-      ],
+        trailing: busyIndicator,
+        onTap: _healthPlanetBusy
+            ? null
+            : () => _importFromHealthPlanet(fullHistory: true),
+      ),
+      ListTile(
+        leading: const Icon(Icons.link_off),
+        title: const Text('Unlink Health Planet'),
+        trailing: busyIndicator,
+        onTap: _healthPlanetBusy ? null : _unlinkHealthPlanet,
+      ),
     ];
   }
 
-  List<Widget> _exportSection() {
+  List<Widget> _exportRows() {
+    final busyIndicator = _exporting ? const _BusyIndicator() : null;
     return [
-      const SectionHeader('Export'),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
+      ListTile(
+        leading: const Icon(Icons.table_chart_outlined),
+        title: const Text('Export CSV'),
+        trailing: busyIndicator ?? const Icon(Icons.chevron_right),
+        onTap: _exporting ? null : () => _export(asCsv: true),
+      ),
+      ListTile(
+        leading: const Icon(Icons.data_object_outlined),
+        title: const Text('Export JSON'),
+        trailing: busyIndicator ?? const Icon(Icons.chevron_right),
+        onTap: _exporting ? null : () => _export(asCsv: false),
+      ),
+    ];
+  }
+}
+
+/// One settings group: a [SectionHeader] over a tonal card holding the rows.
+///
+/// The card is the theme's [Card] (surface ladder "card" level, token
+/// radius), so every group reads as one rounded block on the page, the way
+/// trale groups its settings.
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(title),
+        Card(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Centred icon + message: the whole body when settings fail to load, or a
+/// compact block inside a group card when it has nothing to list.
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.message,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final String message;
+
+  /// Tighter vertical padding and a smaller icon for use inside a card.
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: HakariSpacing.xl,
+          vertical: compact ? HakariSpacing.xl : HakariSpacing.xxxl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _exporting ? null : () => _export(asCsv: true),
-                icon: const Icon(Icons.table_chart_outlined),
-                label: const Text('Export CSV'),
-              ),
+            Icon(
+              icon,
+              size: compact ? HakariSpacing.xxl : HakariSpacing.xxxl,
+              color: scheme.outline,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _exporting ? null : () => _export(asCsv: false),
-                icon: const Icon(Icons.data_object_outlined),
-                label: const Text('Export JSON'),
+            const SizedBox(height: HakariSpacing.md),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
-    ];
+    );
+  }
+}
+
+/// Small spinner shown in a row's trailing slot while its action runs.
+class _BusyIndicator extends StatelessWidget {
+  const _BusyIndicator();
+
+  static const double _size = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: _size,
+      height: _size,
+      child: CircularProgressIndicator(strokeWidth: 2),
+    );
   }
 }
 
@@ -867,7 +973,7 @@ class _RelayStatusList extends ConsumerWidget {
         ),
         statusesAsync.when(
           loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.symmetric(vertical: HakariSpacing.sm),
             child: LinearProgressIndicator(),
           ),
           error: (error, _) => Text(
@@ -886,8 +992,8 @@ class _RelayStatusList extends ConsumerWidget {
                   ),
                 )
               : Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: HakariSpacing.sm,
+                  runSpacing: HakariSpacing.sm,
                   children: [
                     for (final status in statuses)
                       _RelayStatusChip(status: status),
