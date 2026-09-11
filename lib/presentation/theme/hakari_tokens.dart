@@ -115,6 +115,11 @@ abstract final class HakariSpacing {
   static const double sectionGap = sm;
 
   /// Bottom padding on scrolling lists so the FAB never covers the last row.
+  ///
+  /// This is "FAB height + margin" only. The navigation shell keeps
+  /// `extendBody: false`, so tab bodies are laid out above the
+  /// [NavigationBar] and see a bottom [MediaQuery] padding of 0. Do not add
+  /// [HakariSizes.navBarHeight] or safe-area insets on top of this value.
   static const double fabClearance = 120;
 
   static const EdgeInsets pageInsets = EdgeInsets.symmetric(horizontal: page);

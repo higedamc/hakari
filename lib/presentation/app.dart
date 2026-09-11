@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/app_settings.dart';
 import 'providers/nostr_sync_provider.dart';
 import 'providers/settings_provider.dart';
-import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/root_shell.dart';
 import 'theme/hakari_theme.dart';
 import 'widgets/app_messenger.dart';
 
@@ -35,10 +35,10 @@ class HakariApp extends ConsumerWidget {
   }
 }
 
-/// Routes first launches into onboarding, everyone else into Home.
+/// Routes first launches into onboarding, everyone else into the tab shell.
 ///
 /// Users who logged in before this flag existed skip onboarding via the
-/// signer check. A storage error falls through to Home so the app stays
+/// signer check. A storage error falls through to the shell so the app stays
 /// usable.
 class _RootGate extends ConsumerWidget {
   const _RootGate();
@@ -52,7 +52,7 @@ class _RootGate extends ConsumerWidget {
               value.signerMode == SignerMode.none =>
         const OnboardingScreen(),
       AsyncLoading() => const Scaffold(body: SizedBox.shrink()),
-      _ => const HomeScreen(),
+      _ => const RootShell(),
     };
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
