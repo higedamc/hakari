@@ -76,6 +76,51 @@ void main() {
           expect(nav.overlayColor!.resolve(unselected), Colors.transparent);
         });
 
+        testWidgets('app bar changes its rendered colour once the body '
+            'has scrolled under it', (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: theme,
+              home: Scaffold(
+                appBar: AppBar(title: const Text('Scroll')),
+                body: ListView.builder(
+                  itemCount: 100,
+                  itemBuilder: (_, i) => ListTile(title: Text('Row $i')),
+                ),
+              ),
+            ),
+          );
+
+          // The Material the AppBar paints itself with, not the theme
+          // field: this is the colour on screen after the bar has resolved
+          // its scrolled-under state.
+          Color paintedBarColor() => tester
+              .widget<Material>(
+                find
+                    .descendant(
+                      of: find.byType(AppBar),
+                      matching: find.byType(Material),
+                    )
+                    .first,
+              )
+              .color!;
+
+          final atRest = paintedBarColor();
+          expect(atRest, HakariSurfaces.page(scheme));
+
+          await tester.drag(find.byType(ListView), const Offset(0, -400));
+          await tester.pumpAndSettle();
+
+          final scrolled = paintedBarColor();
+          expect(scrolled, isNot(equals(atRest)));
+          expect(scrolled, HakariSurfaces.bar(scheme));
+
+          // Scrolling back to the top restores the page colour.
+          await tester.drag(find.byType(ListView), const Offset(0, 400));
+          await tester.pumpAndSettle();
+          expect(paintedBarColor(), atRest);
+        });
+
         testWidgets('a stock NavigationBar renders under the theme', (
           tester,
         ) async {

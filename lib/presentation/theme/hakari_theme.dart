@@ -36,8 +36,18 @@ abstract final class HakariTheme {
       scaffoldBackgroundColor: HakariSurfaces.page(scheme),
       extensions: <ThemeExtension<dynamic>>[chart],
 
+      // The bar sits on the page colour until content scrolls under it,
+      // then steps to the bar surface (the navigation bar's colour) so a
+      // scrolled screen is visibly different from an unscrolled one. No
+      // shadow and no tint: the colour step alone is the boundary. AppBar
+      // resolves this per WidgetState, so the step happens without a
+      // per-screen colour.
       appBarTheme: AppBarTheme(
-        backgroundColor: HakariSurfaces.page(scheme),
+        backgroundColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.scrolledUnder)
+              ? HakariSurfaces.bar(scheme)
+              : HakariSurfaces.page(scheme),
+        ),
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         centerTitle: false,
