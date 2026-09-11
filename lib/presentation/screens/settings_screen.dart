@@ -8,6 +8,7 @@ import '../../core/di/providers.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/weight_entry.dart';
 import '../../domain/failures/failures.dart';
+import '../../domain/services/body_metrics.dart';
 import '../../domain/services/nostr_service.dart';
 import '../providers/nostr_sync_provider.dart';
 import '../providers/relay_status_provider.dart';
@@ -447,6 +448,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _importFromHealthPlanet({required bool fullHistory}) async {
     setState(() => _healthPlanetBusy = true);
+    // Read the controller before the first await: ref must not be touched
+    // after a dispose that may happen while the fetch is in flight.
+    final settings = _settings;
     try {
       final service = ref.read(healthPlanetServiceProvider);
       final now = DateTime.now();
@@ -507,6 +511,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         (final i, final u) =>
           'Imported $i new, updated $u existing entries from Health Planet.',
       });
+      // The profile height rides along with the innerscan response. The
+      // controller adopts it only while no height is stored, so a value
+      // the user typed is never overwritten by an import.
+      await settings.adoptFetchedHeightCm(service.lastFetchedHeightCm);
     } on Failure catch (f) {
       showAppSnackBar(f.message);
     } finally {
@@ -575,6 +583,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: 'Identity',
               children: _identityRows(settings),
             ),
+            _SettingsGroup(
+              title: 'Body profile',
+              children: _bodyProfileRows(settings),
+            ),
             _SettingsGroup(title: 'Relays', children: _relayRows(settings)),
             _SettingsGroup(title: 'Privacy', children: _torRows(settings)),
             _SettingsGroup(
@@ -629,6 +641,105 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onPressed: _loginWithAmber,
           icon: const Icon(Icons.login),
           label: const Text('Login with Amber'),
+        ),
+      ),
+    ];
+  }
+
+  // ------------------------------------------------------------------
+  // Body profile
+
+  static String _formatNumber(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
+
+  /// Numeric entry for one body-profile value. Validation happens in the
+  /// dialog, not the controller: the controller silently ignores
+  /// implausible values without saving, so without this check a user
+  /// typing `30` would see the value simply not stick.
+  Future<void> _editBodyValue({
+    required String title,
+    required String unit,
+    required double? initial,
+    required double min,
+    required double max,
+    required Future<AppSettings> Function(SettingsController c, double value)
+    save,
+  }) async {
+    final value = await showDialog<double>(
+      context: context,
+      builder: (_) => _BodyValueDialog(
+        title: title,
+        unit: unit,
+        initial: initial,
+        min: min,
+        max: max,
+      ),
+    );
+    if (value == null) return;
+    await _updateOnly((c) => save(c, value));
+  }
+
+  List<Widget> _bodyProfileRows(AppSettings settings) {
+    final height = settings.heightCm;
+    final goal = settings.goalWeightKg;
+    return [
+      ListTile(
+        leading: const Icon(Icons.height),
+        title: const Text('Height'),
+        // The stored value does not remember whether it was typed or
+        // imported, so the row states the rule instead of guessing a
+        // source: imports only fill an empty slot, and clearing is how a
+        // corrected Health Planet height gets picked up.
+        subtitle: Text(
+          height == null
+              ? 'Not set. Enter it here, or the next Health Planet import '
+                    'fills it in.'
+              : '${_formatNumber(height)} cm. Entered here or filled in by '
+                    'a Health Planet import; imports never overwrite it. '
+                    'Clear it to let the next import refill it.',
+        ),
+        isThreeLine: height != null,
+        trailing: height == null
+            ? const Icon(Icons.chevron_right)
+            : IconButton(
+                tooltip: 'Clear height',
+                icon: const Icon(Icons.close),
+                onPressed: () => _updateOnly((c) => c.setHeightCm(null)),
+              ),
+        onTap: () => _editBodyValue(
+          title: 'Height',
+          unit: 'cm',
+          initial: height,
+          min: BodyProfileLimits.minHeightCm,
+          max: BodyProfileLimits.maxHeightCm,
+          save: (c, v) => c.setHeightCm(v),
+        ),
+      ),
+      ListTile(
+        leading: const Icon(Icons.flag_outlined),
+        title: const Text('Goal weight'),
+        subtitle: Text(
+          goal == null
+              ? 'Not set. Health Planet does not provide it; enter it here '
+                    'to see progress on the Stats tab.'
+              : '${_formatNumber(goal)} kg. Progress toward it shows on the '
+                    'Stats tab.',
+        ),
+        trailing: goal == null
+            ? const Icon(Icons.chevron_right)
+            : IconButton(
+                tooltip: 'Clear goal weight',
+                icon: const Icon(Icons.close),
+                onPressed: () => _updateOnly((c) => c.setGoalWeightKg(null)),
+              ),
+        onTap: () => _editBodyValue(
+          title: 'Goal weight',
+          unit: 'kg',
+          initial: goal,
+          min: BodyProfileLimits.minWeightKg,
+          max: BodyProfileLimits.maxWeightKg,
+          save: (c, v) => c.setGoalWeightKg(v),
         ),
       ),
     ];
@@ -856,6 +967,98 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onTap: _exporting ? null : () => _export(asCsv: false),
       ),
     ];
+  }
+}
+
+/// Numeric entry dialog for a body-profile value. Owns its text controller
+/// so it is disposed with the route, after the exit animation, and pops
+/// with the parsed value only when it lies within `[min, max]`.
+class _BodyValueDialog extends StatefulWidget {
+  const _BodyValueDialog({
+    required this.title,
+    required this.unit,
+    required this.initial,
+    required this.min,
+    required this.max,
+  });
+
+  final String title;
+  final String unit;
+  final double? initial;
+  final double min;
+  final double max;
+
+  @override
+  State<_BodyValueDialog> createState() => _BodyValueDialogState();
+}
+
+class _BodyValueDialogState extends State<_BodyValueDialog> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.initial == null
+          ? ''
+          : _SettingsScreenState._formatNumber(widget.initial!),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final parsed = double.tryParse(
+      _controller.text.trim().replaceAll(',', '.'),
+    );
+    final valid =
+        parsed != null &&
+        parsed.isFinite &&
+        parsed >= widget.min &&
+        parsed <= widget.max;
+    if (!valid) {
+      setState(() {
+        _errorText =
+            'Enter a value between '
+            '${_SettingsScreenState._formatNumber(widget.min)} and '
+            '${_SettingsScreenState._formatNumber(widget.max)} ${widget.unit}';
+      });
+      return;
+    }
+    Navigator.of(context).pop(parsed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: '${widget.title} (${widget.unit})',
+          suffixText: widget.unit,
+          errorText: _errorText,
+          // The range message does not fit one line at dialog width and
+          // the decoration truncates errors to a single line by default.
+          errorMaxLines: 2,
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
+    );
   }
 }
 
