@@ -9,9 +9,10 @@ import 'hakari_tokens.dart';
 /// from `hakari_tokens.dart`; do not add literals in this file that are not
 /// already a token.
 ///
-/// `NavigationBarTheme` is configured even though no screen uses a
-/// `NavigationBar` yet. Bottom navigation is a structure change that is
-/// decided separately; when it lands, it inherits this theme unchanged.
+/// `NavigationBarTheme` is fully specified here (indicator, selected /
+/// unselected icon and label colours, label behaviour) even though no screen
+/// uses a `NavigationBar` yet. The navigation shell that follows this PR
+/// composes a stock `NavigationBar` and inherits this theme unchanged.
 abstract final class HakariTheme {
   /// Seed colour. Kept from the original theme so dynamic-colour work later
   /// only has to replace this one value.
@@ -26,6 +27,8 @@ abstract final class HakariTheme {
       brightness: brightness,
     );
     final chart = HakariChartColors.fromScheme(scheme);
+    // Only used to read the M3 text theme for state-dependent label styles.
+    final text = ThemeData(useMaterial3: true, colorScheme: scheme).textTheme;
 
     return ThemeData(
       useMaterial3: true,
@@ -57,13 +60,39 @@ abstract final class HakariTheme {
         ),
       ),
 
+      // Bottom navigation contract (Home / Stats / Settings shell).
+      // Selected destination: pill indicator on secondaryContainer, icon in
+      // onSecondaryContainer, label in onSurface. Unselected: no indicator,
+      // icon and label in onSurfaceVariant. Labels are always visible.
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         height: HakariSizes.navBarHeight,
         backgroundColor: HakariSurfaces.bar(scheme),
         surfaceTintColor: Colors.transparent,
         indicatorColor: scheme.secondaryContainer,
+        indicatorShape: HakariRadii.pillShape,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            size: HakariSizes.navIconSize,
+            color: states.contains(WidgetState.selected)
+                ? scheme.onSecondaryContainer
+                : scheme.onSurfaceVariant,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? text.labelMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                )
+              : text.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed)
+              ? scheme.onSurface.withValues(alpha: 0.10)
+              : Colors.transparent,
+        ),
       ),
 
       floatingActionButtonTheme: FloatingActionButtonThemeData(

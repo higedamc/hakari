@@ -134,6 +134,9 @@ abstract final class HakariSizes {
 
   /// Height of the Material 3 [NavigationBar].
   static const double navBarHeight = 80;
+
+  /// Icon size inside [NavigationBar] destinations.
+  static const double navIconSize = 24;
 }
 
 /// Tonal surface ladder.

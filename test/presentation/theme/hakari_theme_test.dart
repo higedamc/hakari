@@ -37,14 +37,89 @@ void main() {
           expect(theme.dialogTheme.shape, HakariRadii.dialogShape);
         });
 
-        test('navigation bar theme is ready for a future bottom nav', () {
+        test('navigation bar: tonal bar, pill indicator, labels always', () {
           final nav = theme.navigationBarTheme;
+          expect(nav.elevation, 0);
+          expect(nav.height, HakariSizes.navBarHeight);
           expect(nav.backgroundColor, HakariSurfaces.bar(scheme));
           expect(nav.indicatorColor, scheme.secondaryContainer);
+          expect(nav.indicatorShape, HakariRadii.pillShape);
           expect(
             nav.labelBehavior,
             NavigationDestinationLabelBehavior.alwaysShow,
           );
+        });
+
+        test('navigation bar: selected vs unselected icon and label', () {
+          final nav = theme.navigationBarTheme;
+          const selected = {WidgetState.selected};
+          const unselected = <WidgetState>{};
+
+          final selIcon = nav.iconTheme!.resolve(selected)!;
+          final unselIcon = nav.iconTheme!.resolve(unselected)!;
+          expect(selIcon.color, scheme.onSecondaryContainer);
+          expect(unselIcon.color, scheme.onSurfaceVariant);
+          expect(selIcon.size, HakariSizes.navIconSize);
+          expect(unselIcon.size, HakariSizes.navIconSize);
+
+          final selLabel = nav.labelTextStyle!.resolve(selected)!;
+          final unselLabel = nav.labelTextStyle!.resolve(unselected)!;
+          expect(selLabel.color, scheme.onSurface);
+          expect(selLabel.fontWeight, FontWeight.w600);
+          expect(unselLabel.color, scheme.onSurfaceVariant);
+          expect(unselLabel.fontSize, selLabel.fontSize);
+
+          expect(
+            nav.overlayColor!.resolve(const {WidgetState.pressed})!.a,
+            greaterThan(0),
+          );
+          expect(nav.overlayColor!.resolve(unselected), Colors.transparent);
+        });
+
+        testWidgets('a stock NavigationBar renders under the theme', (
+          tester,
+        ) async {
+          var index = 0;
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: theme,
+              home: StatefulBuilder(
+                builder: (context, setState) => Scaffold(
+                  bottomNavigationBar: NavigationBar(
+                    selectedIndex: index,
+                    onDestinationSelected: (i) => setState(() => index = i),
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.home_outlined),
+                        selectedIcon: Icon(Icons.home),
+                        label: 'Home',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.insights_outlined),
+                        selectedIcon: Icon(Icons.insights),
+                        label: 'Stats',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.settings_outlined),
+                        selectedIcon: Icon(Icons.settings),
+                        label: 'Settings',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+          // Labels are visible for every destination, not just the selected.
+          expect(find.text('Home'), findsOneWidget);
+          expect(find.text('Stats'), findsOneWidget);
+          expect(find.text('Settings'), findsOneWidget);
+
+          await tester.tap(find.text('Stats'));
+          await tester.pumpAndSettle();
+          expect(index, 1);
+          expect(find.byIcon(Icons.insights), findsOneWidget);
+          expect(find.byIcon(Icons.home_outlined), findsOneWidget);
         });
 
         test('extended FAB is tonal and rounded', () {
