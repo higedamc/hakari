@@ -43,6 +43,13 @@ abstract class HealthPlanetService {
   /// max 3 months per Health Planet request) mapped to [WeightEntry].
   Future<List<WeightEntry>> fetchEntries(DateTime from, DateTime to);
 
+  /// Profile height (cm) reported alongside the most recent successful
+  /// [fetchEntries] / [fetchAllEntries] call, or `null` before any fetch
+  /// or when the API omitted it. Comes for free with the `innerscan`
+  /// scope; no extra request. Callers adopt it into settings only when
+  /// the user has not entered a height by hand.
+  double? get lastFetchedHeightCm;
+
   /// Fetches the entire innerscan history by paging 90-day windows
   /// backwards from now. Stops after two consecutive empty windows (or a
   /// hard cap of ~12 years) so it terminates on any realistic account.

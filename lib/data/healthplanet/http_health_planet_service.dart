@@ -28,6 +28,10 @@ class HttpHealthPlanetService implements HealthPlanetService {
 
   final FlutterSecureStorage _storage;
   final Uuid _uuid = const Uuid();
+  double? _lastFetchedHeightCm;
+
+  @override
+  double? get lastFetchedHeightCm => _lastFetchedHeightCm;
 
   @override
   Future<Uri> authorizationUrl() async => Uri.https(_host, '/oauth/auth', {
@@ -142,7 +146,13 @@ class HttpHealthPlanetService implements HealthPlanetService {
       token = await _refreshAccessToken();
       body = await _fetchInnerscan(token, from, to);
     }
-    return HealthPlanetCodec.parseInnerscan(body, generateId: () => _uuid.v4());
+    final payload = HealthPlanetCodec.parseInnerscanPayload(
+      body,
+      generateId: () => _uuid.v4(),
+    );
+    // Keep the last known value when a response happens to omit it.
+    _lastFetchedHeightCm = payload.heightCm ?? _lastFetchedHeightCm;
+    return payload.entries;
   }
 
   @override

@@ -2,6 +2,19 @@ import 'dart:convert';
 
 import '../../domain/entities/weight_entry.dart';
 import '../../domain/failures/failures.dart';
+import '../../domain/services/body_metrics.dart';
+
+/// Everything a single innerscan response yields: the measurements plus
+/// the profile height the API returns next to them.
+class InnerscanPayload {
+  const InnerscanPayload({required this.entries, required this.heightCm});
+
+  /// Measurements, newest first.
+  final List<WeightEntry> entries;
+
+  /// Top-level `height` (cm) when present and plausible, else `null`.
+  final double? heightCm;
+}
 
 /// Pure parsing/mapping for the Health Planet innerscan API.
 /// Kept free of I/O so it is unit-testable.
@@ -64,6 +77,14 @@ class HealthPlanetCodec {
   static List<WeightEntry> parseInnerscan(
     String body, {
     required String Function() generateId,
+  }) => parseInnerscanPayload(body, generateId: generateId).entries;
+
+  /// Like [parseInnerscan] but also returns the profile `height` the API
+  /// sends at the top level next to `birth_date` and `sex`. A missing or
+  /// implausible height never fails the entry parse.
+  static InnerscanPayload parseInnerscanPayload(
+    String body, {
+    required String Function() generateId,
   }) {
     final Object? decoded;
     try {
@@ -76,8 +97,11 @@ class HealthPlanetCodec {
         'Health Planet returned an unexpected innerscan response',
       );
     }
+    final heightCm = parseHeightCm(decoded['height']);
     final data = decoded['data'];
-    if (data is! List) return const [];
+    if (data is! List) {
+      return InnerscanPayload(entries: const [], heightCm: heightCm);
+    }
 
     // date string (yyyyMMddHHmm) -> tag -> value
     final grouped = <String, Map<String, double>>{};
@@ -118,7 +142,21 @@ class HealthPlanetCodec {
       );
     }
     entries.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
-    return entries;
+    return InnerscanPayload(entries: entries, heightCm: heightCm);
+  }
+
+  /// Top-level `height` field → centimetres, or `null`.
+  ///
+  /// The API documents it as a string (`"177.5"`) but the value is remote
+  /// input, so a number is accepted too and anything non-finite or outside
+  /// [BodyProfileLimits] is dropped rather than thrown.
+  static double? parseHeightCm(Object? raw) {
+    final double? value = switch (raw) {
+      final num n => n.toDouble(),
+      final String s => double.tryParse(s.trim()),
+      _ => null,
+    };
+    return BodyProfileLimits.isPlausibleHeightCm(value) ? value : null;
   }
 
   /// Health Planet timestamps are local `yyyyMMddHHmm`.
