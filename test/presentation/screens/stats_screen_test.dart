@@ -1,12 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hakari/core/di/providers.dart';
 import 'package:hakari/domain/entities/app_settings.dart';
 import 'package:hakari/domain/entities/weight_entry.dart';
+import 'package:hakari/domain/repositories/settings_repository.dart';
 import 'package:hakari/presentation/screens/stats_screen.dart';
 import 'package:hakari/presentation/widgets/stats/bmi_card.dart';
 import 'package:hakari/presentation/widgets/stats/goal_card.dart';
 import 'package:hakari/presentation/widgets/stats/metric_trend_card.dart';
 import 'package:hakari/presentation/widgets/stats/stats_period.dart';
+import 'package:hakari/presentation/theme/hakari_theme.dart';
+import 'package:hakari/presentation/widgets/stats/weight_summary_card.dart';
 
 import '../screen_fakes.dart';
 
@@ -186,6 +193,57 @@ void main() {
         expect(find.text('1 measurements'), findsOneWidget);
       });
 
+      testWidgets('while settings are loading, BMI and Goal cards wait '
+          'instead of inviting; they appear once settings resolve', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(400, 1600);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final pending = _PendingSettingsRepository();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              weightRepositoryProvider.overrideWithValue(
+                FakeWeightRepository(populated),
+              ),
+              settingsRepositoryProvider.overrideWithValue(pending),
+              healthServiceProvider.overrideWithValue(FakeHealthService()),
+              nostrServiceProvider.overrideWithValue(FakeNostrService()),
+              healthPlanetServiceProvider.overrideWithValue(
+                FakeHealthPlanetService(),
+              ),
+              scaleServiceProvider.overrideWithValue(FakeScaleService()),
+            ],
+            child: MaterialApp(
+              theme: HakariTheme.light(),
+              darkTheme: HakariTheme.dark(),
+              themeMode: brightness == Brightness.dark
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+              home: const StatsScreen(),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.byType(WeightSummaryCard), findsOneWidget);
+        expect(find.byType(BmiCard), findsNothing);
+        expect(find.byType(GoalCard), findsNothing);
+        expect(find.text(BmiCard.missingHeightMessage), findsNothing);
+        expect(find.text(GoalCard.missingGoalMessage), findsNothing);
+
+        pending.complete(profile);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.byType(BmiCard), findsOneWidget);
+        expect(find.byType(GoalCard), findsOneWidget);
+        expect(find.text('24.3'), findsOneWidget);
+        expect(find.text('kg to go'), findsOneWidget);
+        expect(find.text(BmiCard.missingHeightMessage), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('goal reached', (tester) async {
         await pumpStats(
           tester,
@@ -201,4 +259,20 @@ void main() {
       });
     });
   }
+}
+
+/// Settings repository whose first load stays pending until [complete].
+class _PendingSettingsRepository implements SettingsRepository {
+  final _load = Completer<AppSettings>();
+
+  void complete(AppSettings settings) => _load.complete(settings);
+
+  @override
+  Future<AppSettings> load() => _load.future;
+
+  @override
+  Future<void> save(AppSettings settings) async {}
+
+  @override
+  Stream<AppSettings> watch() => _load.future.asStream();
 }

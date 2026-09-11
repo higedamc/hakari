@@ -32,7 +32,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final entriesAsync = ref.watch(entriesProvider);
-    final settings = ref.watch(settingsProvider).value;
+    final settingsAsync = ref.watch(settingsProvider);
+    // Until settings have loaded, height and goal are unknown, not absent.
+    // The BMI and Goal cards wait rather than inviting a user who has
+    // already set both to go and set them.
+    final settingsKnown = settingsAsync.hasValue || settingsAsync.hasError;
+    final settings = settingsAsync.value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Stats')),
@@ -52,6 +57,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         data: (entries) => _StatsBody(
           allEntries: entries,
           period: _period,
+          settingsKnown: settingsKnown,
           heightCm: settings?.heightCm,
           goalWeightKg: settings?.goalWeightKg,
           onPeriodChanged: (p) => setState(() => _period = p),
@@ -65,6 +71,7 @@ class _StatsBody extends StatelessWidget {
   const _StatsBody({
     required this.allEntries,
     required this.period,
+    required this.settingsKnown,
     required this.heightCm,
     required this.goalWeightKg,
     required this.onPeriodChanged,
@@ -72,6 +79,10 @@ class _StatsBody extends StatelessWidget {
 
   final List<WeightEntry> allEntries;
   final StatsPeriod period;
+
+  /// False while [AppSettings] are still loading; the cards that depend
+  /// on them are omitted instead of rendering a misleading invitation.
+  final bool settingsKnown;
   final double? heightCm;
   final double? goalWeightKg;
   final ValueChanged<StatsPeriod> onPeriodChanged;
@@ -95,14 +106,16 @@ class _StatsBody extends StatelessWidget {
           _EmptyPeriod(period: period, hasAnyEntries: allEntries.isNotEmpty)
         else ...[
           WeightSummaryCard(summary: summary, period: period),
-          const SizedBox(height: HakariSpacing.listGap),
-          BmiCard(weightKg: summary.current.weightKg, heightCm: heightCm),
-          const SizedBox(height: HakariSpacing.listGap),
-          GoalCard(
-            summary: summary,
-            period: period,
-            goalWeightKg: goalWeightKg,
-          ),
+          if (settingsKnown) ...[
+            const SizedBox(height: HakariSpacing.listGap),
+            BmiCard(weightKg: summary.current.weightKg, heightCm: heightCm),
+            const SizedBox(height: HakariSpacing.listGap),
+            GoalCard(
+              summary: summary,
+              period: period,
+              goalWeightKg: goalWeightKg,
+            ),
+          ],
           for (final metric in BodyMetric.values)
             if (metric.entriesWithValue(inWindow) case final withValue
                 when withValue.isNotEmpty) ...[
