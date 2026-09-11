@@ -6,6 +6,7 @@ import 'providers/nostr_sync_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'theme/hakari_theme.dart';
 import 'widgets/app_messenger.dart';
 
 /// Root widget. main.dart wraps this in a [ProviderScope] whose overrides
@@ -27,33 +28,9 @@ class HakariApp extends ConsumerWidget {
       title: 'Hakari',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: appMessengerKey,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: HakariTheme.light(),
+      darkTheme: HakariTheme.dark(),
       home: const _RootGate(),
-    );
-  }
-
-  ThemeData _buildTheme(Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: Colors.teal,
-      brightness: brightness,
-    );
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: scheme.surfaceContainerLow,
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      snackBarTheme: const SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-      ),
     );
   }
 }
