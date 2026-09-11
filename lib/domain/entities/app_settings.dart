@@ -29,6 +29,16 @@ class AppSettings {
   /// First-run onboarding has been finished (logged in or skipped).
   final bool onboardingComplete;
 
+  /// Body height in centimetres, for BMI. Entered by the user or adopted
+  /// from a Health Planet sync when no manual value exists. `null` when
+  /// unknown.
+  final double? heightCm;
+
+  /// Target body weight in kilograms, entered by the user. Health Planet
+  /// does not expose the goal set on its site, so there is no sync path.
+  /// `null` when no goal is set.
+  final double? goalWeightKg;
+
   const AppSettings({
     this.relays = defaultRelays,
     this.torMode = TorMode.disabled,
@@ -40,6 +50,8 @@ class AppSettings {
     this.autoPublishToNostr = false,
     this.useMetricUnits = true,
     this.onboardingComplete = false,
+    this.heightCm,
+    this.goalWeightKg,
   });
 
   static const defaultRelays = [
@@ -60,6 +72,10 @@ class AppSettings {
     bool? autoPublishToNostr,
     bool? useMetricUnits,
     bool? onboardingComplete,
+    double? heightCm,
+    bool clearHeightCm = false,
+    double? goalWeightKg,
+    bool clearGoalWeightKg = false,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -72,6 +88,10 @@ class AppSettings {
       autoPublishToNostr: autoPublishToNostr ?? this.autoPublishToNostr,
       useMetricUnits: useMetricUnits ?? this.useMetricUnits,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
+      heightCm: clearHeightCm ? null : (heightCm ?? this.heightCm),
+      goalWeightKg: clearGoalWeightKg
+          ? null
+          : (goalWeightKg ?? this.goalWeightKg),
     );
   }
 
@@ -86,6 +106,8 @@ class AppSettings {
     'autoPublishToNostr': autoPublishToNostr,
     'useMetricUnits': useMetricUnits,
     'onboardingComplete': onboardingComplete,
+    'heightCm': heightCm,
+    'goalWeightKg': goalWeightKg,
   };
 
   factory AppSettings.fromMap(Map<dynamic, dynamic> map) => AppSettings(
@@ -105,5 +127,15 @@ class AppSettings {
     autoPublishToNostr: (map['autoPublishToNostr'] as bool?) ?? false,
     useMetricUnits: (map['useMetricUnits'] as bool?) ?? true,
     onboardingComplete: (map['onboardingComplete'] as bool?) ?? false,
+    heightCm: _finiteOrNull(map['heightCm']),
+    goalWeightKg: _finiteOrNull(map['goalWeightKg']),
   );
+
+  /// Persisted numbers come back as `int` or `double` (Hive keeps the
+  /// original type); anything else, or a non-finite value, reads as unset.
+  static double? _finiteOrNull(Object? raw) {
+    if (raw is! num) return null;
+    final value = raw.toDouble();
+    return value.isFinite ? value : null;
+  }
 }
