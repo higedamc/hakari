@@ -41,7 +41,6 @@ void main() {
       expect(s.encryptHealthEvents, isFalse);
       expect(s.autoSyncToHealth, isTrue);
       expect(s.autoPublishToNostr, isTrue);
-      expect(s.useMetricUnits, isFalse);
       expect(s.onboardingComplete, isTrue);
     });
 

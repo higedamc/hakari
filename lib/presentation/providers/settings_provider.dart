@@ -74,9 +74,6 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<AppSettings> setAutoPublishToNostr(bool value) =>
       _update((s) => s.copyWith(autoPublishToNostr: value));
 
-  Future<AppSettings> setUseMetricUnits(bool value) =>
-      _update((s) => s.copyWith(useMetricUnits: value));
-
   // Body profile ---------------------------------------------------------
 
   /// Sets the height the user typed; `null` clears it (and lets the next
