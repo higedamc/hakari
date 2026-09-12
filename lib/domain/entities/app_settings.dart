@@ -24,8 +24,6 @@ class AppSettings {
   /// Auto-publish new entries to Nostr relays.
   final bool autoPublishToNostr;
 
-  final bool useMetricUnits;
-
   /// First-run onboarding has been finished (logged in or skipped).
   final bool onboardingComplete;
 
@@ -48,7 +46,6 @@ class AppSettings {
     this.encryptHealthEvents = true,
     this.autoSyncToHealth = false,
     this.autoPublishToNostr = false,
-    this.useMetricUnits = true,
     this.onboardingComplete = false,
     this.heightCm,
     this.goalWeightKg,
@@ -70,7 +67,6 @@ class AppSettings {
     bool? encryptHealthEvents,
     bool? autoSyncToHealth,
     bool? autoPublishToNostr,
-    bool? useMetricUnits,
     bool? onboardingComplete,
     double? heightCm,
     bool clearHeightCm = false,
@@ -86,7 +82,6 @@ class AppSettings {
       encryptHealthEvents: encryptHealthEvents ?? this.encryptHealthEvents,
       autoSyncToHealth: autoSyncToHealth ?? this.autoSyncToHealth,
       autoPublishToNostr: autoPublishToNostr ?? this.autoPublishToNostr,
-      useMetricUnits: useMetricUnits ?? this.useMetricUnits,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
       heightCm: clearHeightCm ? null : (heightCm ?? this.heightCm),
       goalWeightKg: clearGoalWeightKg
@@ -104,7 +99,6 @@ class AppSettings {
     'encryptHealthEvents': encryptHealthEvents,
     'autoSyncToHealth': autoSyncToHealth,
     'autoPublishToNostr': autoPublishToNostr,
-    'useMetricUnits': useMetricUnits,
     'onboardingComplete': onboardingComplete,
     'heightCm': heightCm,
     'goalWeightKg': goalWeightKg,
@@ -125,7 +119,6 @@ class AppSettings {
     encryptHealthEvents: (map['encryptHealthEvents'] as bool?) ?? true,
     autoSyncToHealth: (map['autoSyncToHealth'] as bool?) ?? false,
     autoPublishToNostr: (map['autoPublishToNostr'] as bool?) ?? false,
-    useMetricUnits: (map['useMetricUnits'] as bool?) ?? true,
     onboardingComplete: (map['onboardingComplete'] as bool?) ?? false,
     heightCm: _finiteOrNull(map['heightCm']),
     goalWeightKg: _finiteOrNull(map['goalWeightKg']),
